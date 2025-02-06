@@ -1,23 +1,23 @@
 # home-lab
 
-> This project setting up a complete Kubernetes monitoring and deployment infrastructure on my Raspberry Pi4.
+> This is my personal Kubernetes setup for my home lab running on Raspberry Pi4.
 
 ## Core Components
-- **K3s** - Lightweight Kubernetes distribution perfect for IoT & Edge computing
-- **Cilium** - eBPF-based networking, observability & security
+- **[K3s](https://k3s.io/)** - Lightweight Kubernetes distribution perfect for IoT & Edge computing
+- **[Cilium](https://docs.cilium.io/en/stable/installation/k8s-install-helm/)** - eBPF-based networking, observability & security
 
 ## Monitoring Stack
-- **Prometheus** - Metrics collection and storage
-- **Grafana** - Metrics visualization and dashboarding 
-- **AlertManager** - Alerting and notifications
+- **[Prometheus](https://prometheus.io/)** - Metrics collection and storage
+- **[Grafana](https://grafana.com/)** - Metrics visualization and dashboarding 
+- **[AlertManager](https://prometheus.io/docs/alerting/latest/alertmanager/)** - Alerting and notifications
 
-## GitOps & Progressive Delivery (Coming Soon)
-- **Argo CD** - Declarative continuous delivery
-- **Argo Workflows** - Kubernetes-native workflow engine
-- **Argo Rollouts** - Progressive delivery controller
+## GitOps
+- **[Argo CD](https://argo.github.io/)** - Declarative continuous delivery
+- **[Argo Workflows](https://argoproj.github.io/argo-workflows/)** - Kubernetes-native workflow engine
+- **[Argo Rollouts](https://argoproj.github.io/argo-rollouts/)** - Progressive delivery controller
 
 ## Ingress Controller
-- **Traefik** - Cloud native ingress controller for handling incoming traffic and routing requests
+- **[Traefik](https://doc.traefik.io/traefik/v3/providers/kubernetes-ingress/)** - Cloud native ingress controller for handling incoming traffic and routing requests
 
 This setup provides a robust platform for running containerized applications with comprehensive monitoring, observability and deployment capabilities on Raspberry Pi hardware.
 
@@ -71,4 +71,3 @@ systemctl restart k3s
 ```
 
 [--cluster-init](https://docs.k3s.io/cli/server#:~:text=join%20a%20cluster-,%2D%2Dcluster%2Dinit,-K3S_CLUSTER_INIT)
-
