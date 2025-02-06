@@ -1,6 +1,6 @@
 # home-lab
 
-> This is my personal Kubernetes setup for my home lab running on Raspberry Pi4.
+> This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4.
 
 ## Core Components
 - **[K3s](https://k3s.io/)** - Lightweight Kubernetes distribution perfect for IoT & Edge computing
@@ -12,16 +12,18 @@
 - **[AlertManager](https://prometheus.io/docs/alerting/latest/alertmanager/)** - Alerting and notifications
 
 ## GitOps
-- **[Argo CD](https://argo.github.io/)** - Declarative continuous delivery
-- **[Argo Workflows](https://argoproj.github.io/argo-workflows/)** - Kubernetes-native workflow engine
-- **[Argo Rollouts](https://argoproj.github.io/argo-rollouts/)** - Progressive delivery controller
+- **[Argo CD](https://argo-cd.readthedocs.io/en/stable/)** - Declarative continuous delivery
+- **[Argo Workflows](https://argoproj.github.io/workflows/)** - Kubernetes-native workflow engine
+- **[Argo Rollouts](https://argoproj.github.io/rollouts/)** - Progressive delivery controller
 
 ## Ingress Controller
-- **[Traefik](https://doc.traefik.io/traefik/v3/providers/kubernetes-ingress/)** - Cloud native ingress controller for handling incoming traffic and routing requests
+- **[Traefik](https://doc.traefik.io/)** - Cloud native ingress controller for handling incoming traffic and routing requests
 
 This setup provides a robust platform for running containerized applications with comprehensive monitoring, observability and deployment capabilities on Raspberry Pi hardware.
 
-## K3S
+## Hand's on
+
+## k3s
 
 ```bash
 export K3S_KUBECONFIG_MODE="644"
@@ -33,6 +35,8 @@ curl -sfL https://get.k3s.io | sh -
 ## Cilium 
 
 ```bash
+helm repo add cilium https://helm.cilium.io/
+helm repo update
 helm install cilium cilium/cilium --version v1.15.6 \
   --namespace kube-system \
   --set operator.replicas=1 \
@@ -45,7 +49,7 @@ helm install cilium cilium/cilium --version v1.15.6 \
   --set routingMode=native \
   --set autoDirectNodeRoutes=true
 ```
-* Be attention to your `k8sServicePort`, which it's the interface advertised of your `k3s`.
+* Be attention to your `k8sServicePort`, which it's the interface advertised from your `k3s`.
 
 [https://docs.cilium.io/en/stable/installation/k8s-install-helm/](https://docs.cilium.io/en/stable/installation/k8s-install-helm/)
 
