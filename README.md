@@ -113,7 +113,7 @@ subject=C = BR, ST = SP, L = Sao Paulo, O = MyKubernetes, CN = traefik.mykuberne
 secret/traefik-dashboard-cert created
 ```
 
-Add your ca.crt to the system keychain. If you are using macOS:
+Add your `ca.crt` to the system keychain. If you are using macOS:
 
 ```bash  
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./ca.crt
@@ -142,6 +142,9 @@ kubectl set env deployment/my-kube-prometheus-stack-grafana -n monitoring GF_SER
 
 # Add the secret to the monitoring namespace
 kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace: traefik/namespace: monitoring/' | kubectl apply -f -
+
+# Create the ingressroute for the monitoring namespace
+kubectl create -f monitoring/ingressroute.yaml
 ```
 
 ## Traefik
@@ -154,6 +157,6 @@ helm install traefik traefik/traefik --namespace traefik --values traefik/values
 kubectl create -f traefik/dashboard.yaml
 ```
 
-[https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)
+[https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)  
 [https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml)
 
