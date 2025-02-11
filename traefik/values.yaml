@@ -1,0 +1,53 @@
+ports:
+  web:
+    port: 80
+  websecure:
+    port: 443
+    tls:
+      enabled: true
+      options: default
+  metrics:
+    port: 8899
+    expose: {}
+    protocol: TCP
+
+dashboard: # Enable an ingress-route for the dashboard #189
+  enabled: true
+  domain: "traefik.mykubernetes.com"  
+
+# Enable Prometheus metrics and create automatically a service and a ServiceMonitor.
+metrics:  
+  prometheus:
+    entryPoint: metrics
+    service:
+      enabled: true
+    serviceMonitor:
+      enabled: true
+
+logs:
+  access:
+    enabled: true
+
+providers:
+  kubernetesCRD: # Load Kubernetes IngressRoute providers; IngressRoute, Middleware, etc.
+    enabled: true
+
+additionalArguments:
+  - "--api.dashboard=true"  # Enable the dashboard
+  - "--api.insecure=false"  # Disable insecure API
+  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"  # Redirect HTTP to HTTPS
+  - "--log.level=DEBUG"  # Set log level to DEBUG
+  - "--serversTransport.insecureSkipVerify=false"  # Skip TLS verification - My cert is self-signed. I've added my ca.crt (ServerTransport).
+  - "--metrics.prometheus=true"  # Enable Prometheus metrics
+  - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"  # Set Prometheus buckets
+  - "--metrics.prometheus.addEntryPointsLabels=true"  # Add entry points labels
+  - "--metrics.prometheus.addServicesLabels=true"  # Add services labels
+  - "--entryPoints.metrics.address=:8899"  # Set metrics address
+  - "--metrics.prometheus.entryPoint=metrics"  # Set metrics entry point
+  - "--tracing.otlp=true"  # Enable OTLP tracing
+  - "--tracing.otlp.http=true"  # Enable HTTP tracing
+  - "--tracing.otlp.http.endpoint=http://jaeger-collector.observability.svc:4318/v1/traces"  # Set OTLP endpoint
+
+globalArguments:
+  - "--global.checknewversion=false"
+  - "--global.sendanonymoususage=false"
