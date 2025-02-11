@@ -50,7 +50,7 @@ systemctl daemon-reload
 systemctl restart k3s
 ```
 
-[--cluster-init](https://docs.k3s.io/cli/server#:~:text=join%20a%20cluster-,%2D%2Dcluster%2Dinit,-K3S_CLUSTER_INIT)
+[cluster-init](https://docs.k3s.io/cli/server#:~:text=join%20a%20cluster-,%2D%2Dcluster%2Dinit,-K3S_CLUSTER_INIT)   
 [https://k3s.io/](https://k3s.io/)
 
 ## Cilium 
@@ -81,9 +81,11 @@ helm upgrade --install cilium cilium/cilium --version v1.15.6 \
 
 * Be attention to your `k8sServicePort`, which it's the interface advertised from your `k3s`.
 
-```bash
+```bash 
 kubectl edit cm -n kube-system cilium-config
+```
 
+```bash
 bpf-lb-sock-hostns-only: "true"
 enable-host-legacy-routing: "true"
 device: eth0
@@ -99,43 +101,6 @@ kubectl create -f cilium/CiliumL2AnnouncementPolicy-IPPool.yaml
 ```
 
 [https://docs.cilium.io/en/stable/installation/k8s-install-helm/](https://docs.cilium.io/en/stable/installation/k8s-install-helm/)
-
-## Monitoring
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-kubectl create namespace monitoring
-helm install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack --version 68.3.0 -n monitoring -f monitoring/prometheus-values.yaml
-```
-
-Setting my monitoring solution to be able to reach at `/prometheus`, `/grafana` and `/alertmanager`.
-
-```bash
-kubectl patch prometheus my-kube-prometheus-stack-prometheus -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/externalUrl", "value": "https://traefik.mykubernetes.com/prometheus"}]'
-kubectl patch prometheus my-kube-prometheus-stack-prometheus -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/routePrefix", "value": "/prometheus"}]'
-
-kubectl patch alertmanager my-kube-prometheus-stack-alertmanager -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/externalUrl", "value": "https://traefik.mykubernetes.com/alertmanager"}]'
-kubectl patch alertmanager my-kube-prometheus-stack-alertmanager -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/routePrefix", "value": "/alertmanager"}]'
-
-kubectl set env deployment/my-kube-prometheus-stack-grafana -n monitoring GF_SERVER_SERVE_FROM_SUB_PATH=true
-kubectl set env deployment/my-kube-prometheus-stack-grafana -n monitoring GF_SERVER_ROOT_URL=/grafana
- ```
-
-## Traefik
-
-```bash
-kubectl create namespace traefik
-helm repo add traefik https://traefik.github.io/charts
-helm repo update
-helm install traefik traefik/traefik --namespace traefik --values traefik/values.yaml
-kubectl create -f traefik/ingressroute-dashboard.yaml
-
-# Add the secret to the monitoring namespace
-kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace: traefik/namespace: monitoring/' | kubectl apply -f -
-```
-[https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)
-[https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml)
 
 ## Certs 
 
@@ -153,3 +118,42 @@ Add your ca.crt to the system keychain. If you are using macOS:
 ```bash  
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./ca.crt
 ```
+
+## Monitoring
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+kubectl create namespace monitoring
+helm install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack --version 68.3.0 -n monitoring -f monitoring/prometheus-values.yaml
+```
+
+Setting my monitoring solution to reach at `/prometheus`, `/grafana` and `/alertmanager`.
+
+```bash
+kubectl patch prometheus my-kube-prometheus-stack-prometheus -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/externalUrl", "value": "https://traefik.mykubernetes.com/prometheus"}]'
+kubectl patch prometheus my-kube-prometheus-stack-prometheus -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/routePrefix", "value": "/prometheus"}]'
+
+kubectl patch alertmanager my-kube-prometheus-stack-alertmanager -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/externalUrl", "value": "https://traefik.mykubernetes.com/alertmanager"}]'
+kubectl patch alertmanager my-kube-prometheus-stack-alertmanager -n monitoring --type='json' -p='[{"op": "replace", "path": "/spec/routePrefix", "value": "/alertmanager"}]'
+
+kubectl set env deployment/my-kube-prometheus-stack-grafana -n monitoring GF_SERVER_SERVE_FROM_SUB_PATH=true
+kubectl set env deployment/my-kube-prometheus-stack-grafana -n monitoring GF_SERVER_ROOT_URL=/grafana
+
+# Add the secret to the monitoring namespace
+kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace: traefik/namespace: monitoring/' | kubectl apply -f -
+```
+
+## Traefik
+
+```bash
+kubectl create namespace traefik
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+helm install traefik traefik/traefik --namespace traefik --values traefik/values.yaml
+kubectl create -f traefik/dashboard.yaml
+```
+
+[https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)
+[https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml)
+
