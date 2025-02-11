@@ -1,6 +1,6 @@
 # home-lab
 
-> This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4.
+> This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4 cluster.
 
 ## Core Components
 - **[K3s](https://k3s.io/)** - Lightweight Kubernetes distribution perfect for IoT & Edge computing
