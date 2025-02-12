@@ -21,6 +21,20 @@
 
 ## Hand's on
 
+> For this setup I've disable `wlan0` interface and use only `eth0` for performance reasons.
+I also disable `brcmfmac_wcc`, `brcmfmac`, `brcmutil` and `cfg80211` modules to avoid the `wlan0` interface to be used.
+
+```bash
+modprobe -r brcmfmac_wcc
+modprobe -r brcmfmac
+modprobe -r brcmutil
+modprobe -r cfg80211
+
+echo "blacklist brcmfmac_wcc" > /etc/modprobe.d/blacklist-brcmfmac.conf
+echo "blacklist brcmfmac" >> /etc/modprobe.d/blacklist-brcmfmac.conf
+shutdown -r now
+```
+
 ## k3s
 
 ```bash
@@ -159,4 +173,30 @@ kubectl create -f traefik/dashboard.yaml
 
 [https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)  
 [https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml)
+
+## Argo Workflows
+
+```bash
+kubectl create namespace argo
+kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.8/install.yaml
+```
+
+In this setup I've changed the [Base_HREF](https://argo-workflows.readthedocs.io/en/release-3.5/argo-server/#base-href) to `/argo/` to be able to reach the workflows UI at `/argo/`.
+
+```bash
+kubectl edit deploy/argo-server -n argo
+```
+
+```bash
+  env:
+  - name: BASE_HREF
+    value: /argo/
+```
+
+Argo Workflows need a service account in the respective namespace where the workloads and builds it's going to run in order to work properly. This service account needs some permissions to manage workflows, interact with pods and etctera. You can find more info [here](https://argoproj.github.io/argo-workflows/service-accounts/).
+
+```bash
+kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace: traefik/namespace: argo/' | kubectl apply -f -
+kubectl create -f argo/
+```
 
