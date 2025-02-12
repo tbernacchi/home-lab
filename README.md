@@ -188,15 +188,18 @@ kubectl edit deploy/argo-server -n argo
 ```
 
 ```bash
+- args: 
+  - server
+  - --auth-mode=server
   env:
   - name: BASE_HREF
     value: /argo/
 ```
 
-Argo Workflows need a service account in the respective namespace where the workloads and builds it's going to run in order to work properly. This service account needs some permissions to manage workflows, interact with pods and etctera. You can find more info [here](https://argoproj.github.io/argo-workflows/service-accounts/).
+Argo Workflows need a service account in the respective namespace where the workloads it's going to run order to work properly. This service account needs some permissions to manage workflows, interact with pods and etctera. You can find more info [here](https://argoproj.github.io/argo-workflows/service-accounts/).
 
 ```bash
 kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace: traefik/namespace: argo/' | kubectl apply -f -
-kubectl create -f argo/
+kubectl create -f argo/rbac.yaml
 ```
 
