@@ -203,3 +203,46 @@ kubectl get secret traefik-dashboard-cert -n traefik -o yaml | sed 's/namespace:
 kubectl create -f argo/rbac.yaml
 ```
 
+
+## Argo CD
+
+To install argo-cd I've followed the [https://argo-cd.readthedocs.io/en/stable/getting_started/](https://argo-cd.readthedocs.io/en/stable/getting_started/).
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+For this installation I've managed the UI through Traefik to access on `traefik.mykubernetes.com/argocd`.
+
+```bash
+kubectl patch deployment argocd-server -n argocd --type='json' -p='[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/args",
+    "value": [
+      "/usr/local/bin/argocd-server",
+      "--insecure",
+      "--basehref=/argocd",
+      "--rootpath=/argocd"
+    ]
+  }
+]'
+```
+
+```bash
+kubectl get deploy argocd-server -n argocd -o jsonpath='{.spec.template.spec.containers[0].args}' | jq
+```
+
+```bash
+kubectl create -f argo-stack/argo-cd/ingressroute.yaml
+```
+
+Reference:
+[https://argo-cd.readthedocs.io/en/latest/operator-manual/ingress/](https://argo-cd.readthedocs.io/en/latest/operator-manual/ingress/)
+
+UI password: 
+
+```
+kubectl get secret/argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode
+```

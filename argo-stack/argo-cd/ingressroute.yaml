@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`traefik.mykubernetes.com`) && PathPrefix(`/argocd`)
+      services:
+        - name: argocd-server
+          port: 80
+          scheme: http
+  tls:
+    secretName: traefik-dashboard-cert
