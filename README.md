@@ -174,7 +174,7 @@ kubectl create -f traefik/dashboard.yaml
 [https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart)  
 [https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml)
 
-## Argo Workflows
+## argo-workflow
 
 ```bash
 kubectl create namespace argo
@@ -204,7 +204,7 @@ kubectl create -f argo/rbac.yaml
 ```
 
 
-## Argo CD
+## argo-cd
 
 To install argo-cd I've followed the [https://argo-cd.readthedocs.io/en/stable/getting_started/](https://argo-cd.readthedocs.io/en/stable/getting_started/).
 
@@ -245,4 +245,70 @@ UI password:
 
 ```
 kubectl get secret/argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode
+```
+
+> argo-cd has an issue using basehref with `/argocd`, when you try to access the UI at `https://argocd.mykubernetes.com/argocd` it will redirect to `https://argocd.mykubernetes.com/argocd/argocd`.
+[https://github.com/argoproj/argo-cd/issues/20790](https://github.com/argoproj/argo-cd/issues/20790)
+
+## argo-rollouts
+
+To enable the argo-rollouts on the UI I've use this extension: https://github.com/argoproj-labs/rollout-extension
+
+```bash
+kubectl create namespace argo-rollouts
+helm repo add argo-rollouts https://argoproj.github.io/argo-helm -n argo-rollouts
+helm repo update
+helm install argo-rollouts argo/argo-rollouts -n argo-rollouts --set dashboard.enabled=true
+```
+
+```bash
+kubectl patch deployment argocd-server -n argocd --type='json' -p='
+[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/initContainers",
+    "value": [
+      {
+        "name": "rollout-extension",
+        "image": "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
+        "env": [
+          {
+            "name": "EXTENSION_URL",
+            "value": "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
+          }
+        ],
+        "volumeMounts": [
+          {
+            "name": "extensions",
+            "mountPath": "/tmp/extensions/"
+          }
+        ],
+        "securityContext": {
+          "runAsUser": 1000,
+          "allowPrivilegeEscalation": false
+        }
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/volumes",
+    "value": [
+      {
+        "name": "extensions",
+        "emptyDir": {}
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/volumeMounts",
+    "value": [
+      {
+        "name": "extensions",
+        "mountPath": "/tmp/extensions/"
+      }
+    ]
+  }
+]'
 ```
