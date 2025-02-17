@@ -247,7 +247,7 @@ UI password:
 kubectl get secret/argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode
 ```
 
-> argo-cd has an issue using basehref with `/argocd`, when you try to access the UI at `https://argocd.mykubernetes.com/argocd` it will redirect to `https://argocd.mykubernetes.com/argocd/argocd`.
+* argo-cd has an issue using basehref with `/argocd`, when you login at `https://traefik.mykubernetes.com/argocd` it will redirect to `https://traefik.mykubernetes.com/argocd/argocd/applications`.
 [https://github.com/argoproj/argo-cd/issues/20790](https://github.com/argoproj/argo-cd/issues/20790)
 
 ## argo-rollouts
