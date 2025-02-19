@@ -67,6 +67,28 @@ systemctl restart k3s
 [cluster-init](https://docs.k3s.io/cli/server#:~:text=join%20a%20cluster-,%2D%2Dcluster%2Dinit,-K3S_CLUSTER_INIT)   
 [https://k3s.io/](https://k3s.io/)
 
+#### Join nodes to the cluster
+
+master node:
+
+```bash 
+cat /var/lib/rancher/k3s/server/node-token
+K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
+```
+
+worker node:
+```bash 
+export K3S_TOKEN=K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
+```
+
+```bash 
+echo $K3S_TOKEN
+K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
+```
+```bash 
+curl -sfL https://get.k3s.io | K3S_TOKEN=$K3S_TOKEN sh -s - agent --server https://192.168.1.106:6443
+```
+
 ## Cilium 
 
 ```bash
@@ -311,3 +333,5 @@ kubectl patch deployment argocd-server -n argocd --type='json' -p='
   }
 ]'
 ```
+
+
