@@ -271,6 +271,13 @@ kubectl get secret/argocd-initial-admin-secret -n argocd -o jsonpath='{.data.pas
 
 -> argo-cd has an [issue](https://github.com/argoproj/argo-cd/issues/20790) using basehref with `/argocd`; 
 
+Bug fix:
+
+```bash
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.14.10/manifests/install.yaml
+```
+-> Don't forget to patch the deploment after the upgrade.
+
 ## argo-rollouts
 
 To enable the argo-rollouts on the UI I've use this extension: https://github.com/argoproj-labs/rollout-extension
