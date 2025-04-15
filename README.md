@@ -2,11 +2,8 @@
 
 > This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4 cluster.
 
-
-![home-lab](/.github/assets/img/IMG_1624.png)
-
 <div align=>
-	<img align="center" src=/.github/assets/img/IMG_1624.png>
+	<img align="center"  width="75%" src=/.github/assets/img/IMG_1624.png>
 </div>
 
 ## Core Components
