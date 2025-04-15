@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-image-updater-config
+  namespace: argocd 
+data:
+  registries.conf: |
+    registries:
+      - name: DockerHub
+        prefix: docker.io
+        credentials: secret:argo-image-updater/regcred
+        default: true
+
