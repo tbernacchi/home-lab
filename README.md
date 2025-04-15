@@ -2,6 +2,13 @@
 
 > This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4 cluster.
 
+
+![home-lab](/.github/assets/img/home-lab.png)
+
+<div align=>
+	<img align="center" width="150px" src=/.github/assets/img/IMG_1624.png>
+</div>
+
 ## Core Components
 - **[K3s](https://k3s.io/)** - Lightweight Kubernetes distribution perfect for IoT & Edge computing
 - **[Cilium](https://docs.cilium.io/en/stable/installation/k8s-install-helm/)** - eBPF-based networking, observability & security
