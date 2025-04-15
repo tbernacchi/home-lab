@@ -3,7 +3,7 @@
 > This is my personal Kubernetes setup for my home-lab running on my Raspberry Pi4 cluster.
 
 <div align=>
-	<img align="center"  width="710px" src=/.github/assets/img/IMG_1624.png>
+	<img align="center"  width="550px" src=/.github/assets/img/IMG_1624.png>
 </div>
 
 ## Core Components
