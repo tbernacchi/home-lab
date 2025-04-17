@@ -345,4 +345,51 @@ kubectl patch deployment argocd-server -n argocd --type='json' -p='
 ]'
 ```
 
+## argo-image-updater
 
+```bash
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/master/manifests/install.yaml
+```
+
+We've to create a secret from Docker Hub registry to store the credentials for the image updater.
+
+```
+kubectl create secret docker-registry regcred \
+  --namespace argocd \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-username=ambrosiaaaaa\
+  --docker-password=token-xyz\
+  --docker-email=myemail@gmail.com
+```
+
+Also we need a credentials for the GitHub registry.
+
+```
+kubectl create secret generic git-creds \
+  -n argocd \
+  --from-literal=username=myusername \
+  --from-literal=password=token-xyz
+```
+
+Now we just need to "annotate" the application with the image updater.
+
+```
+kubectl get application -n argocd
+NAME     SYNC STATUS   HEALTH STATUS
+foobar   Synced        Healthy
+```
+
+
+```bash
+kubectl annotate application foobar \
+  argocd-image-updater.argoproj.io/credentials="docker.io=secret:dockerhub-secret" \
+  argocd-image-updater.argoproj.io/image-list="ambrosiaaaaa/foobar-api" \
+  argocd-image-updater.argoproj.io/update-strategy="semver" \
+  argocd-image-updater.argoproj.io/write-back-method="git:secret:argocd/git-creds" \
+  -n argocd
+```
+
+[https://argocd-image-updater.readthedocs.io/en/stable/](https://argocd-image-updater.readthedocs.io/en/stable/)
+[update-strategies](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-strategies/)
+[git write-back method](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-methods/#:~:text=no%20further%20configuration.-,git%20write%2Dback%20method,-%C2%B6)
+[examples](https://argocd-image-updater.readthedocs.io/en/stable/examples/)
