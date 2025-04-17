@@ -389,7 +389,8 @@ kubectl annotate application foobar \
   -n argocd
 ```
 
-[https://argocd-image-updater.readthedocs.io/en/stable/](https://argocd-image-updater.readthedocs.io/en/stable/)
-[update-strategies](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-strategies/)
-[git write-back method](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-methods/#:~:text=no%20further%20configuration.-,git%20write%2Dback%20method,-%C2%B6)
-[examples](https://argocd-image-updater.readthedocs.io/en/stable/examples/)
+- [https://argocd-image-updater.readthedocs.io/en/stable/](https://argocd-image-updater.readthedocs.io/en/stable/) 
+- [update-strategies](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-strategies/)
+- [git write-back method](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-methods/#:~:text=no%20further%20configuration.-,git%20write%2Dback%20method,-%C2%B6)  
+- [examples](https://argocd-image-updater.readthedocs.io/en/stable/examples/)
+
