@@ -1,0 +1,14 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: my-kube-prometheus-stack-prometheus
+  namespace: monitoring
+spec:
+  alerting:
+    alertmanagers:
+    - apiVersion: v2
+      namespace: monitoring
+      name: my-kube-prometheus-stack-alertmanager  # service name
+      port: http-web
+      pathPrefix: /alertmanager
