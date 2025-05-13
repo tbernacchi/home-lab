@@ -1,6 +1,63 @@
 prometheus:
+  enabled: true
   prometheusSpec:
-    serviceMonitorNamespaceSelector: {}
-    podMonitorNamespaceSelector: {}
-    serviceMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelectorNilUsesHelmValues: false
+    externalUrl: https://traefik.mykubernetes.com/prometheus  # Do patch
+    routePrefix: /prometheus  # Do patch
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path  # Padrão do k3s
+          resources:
+            requests:
+              storage: 2Gi
+    readinessProbe:
+      failureThreshold: 5
+      periodSeconds: 15
+    alerting:
+      alertmanagers:
+      - apiVersion: v2
+        namespace: monitoring
+        name: my-kube-prometheus-stack-alertmanager
+        port: http-web
+        pathPrefix: /alertmanager
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    externalUrl: https://traefik.mykubernetes.com/alertmanager  # Do patch
+    routePrefix: /alertmanager  # Do patch
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  enabled: true
+  grafana.ini:
+    server:
+      serve_from_sub_path: true  # Do kubectl set env GF_SERVER_SERVE_FROM_SUB_PATH
+      root_url: /grafana  # Do kubectl set env GF_SERVER_ROOT_URL
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
