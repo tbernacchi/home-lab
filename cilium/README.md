@@ -23,3 +23,13 @@
   --set enable-bgp-control-plane.enabled=true \
   --set installCRDs=true
   ```
+
+## Enable Prometheus
+
+```
+ helm upgrade cilium cilium/cilium --version v1.15.6 \
+  --namespace kube-system \
+  --reuse-values \
+  --set prometheus.enabled=true \
+  --set prometheus.port=9962
+```
