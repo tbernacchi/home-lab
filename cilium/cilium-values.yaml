@@ -4,6 +4,7 @@ enable-bgp-control-plane:
   enabled: true
 ingressController:
   Enabled: true
+installCRDs: true
 ipam:
   operator:
     clusterPoolIPv4PodCIDRList: 10.42.0.0/16
@@ -26,8 +27,3 @@ loadBalancer:
 operator:
   replicas: 1
 routingMode: native
-prometheus: 
-  enabled: true
-  port: 9962
-
-imagePullSecrets: []
