@@ -29,10 +29,5 @@ routingMode: native
 prometheus: 
   enabled: true
   port: 9962
-clustermesh:
-  apiserver:
-    service:
-      externalTrafficPolicy: Cluster
-      internalTrafficPolicy: Cluster
 
 imagePullSecrets: []
