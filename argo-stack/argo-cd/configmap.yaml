@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datadog-redisdb-conf
+  namespace: argocd
+data:
+  redisdb.yaml: |-
+    init_config:
+
+    instances:
+      - host: argocd-redis.argocd.svc.cluster.local
+        port: 6379
+        password: ${REDIS_PASSWORD} 
+
