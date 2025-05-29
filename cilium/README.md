@@ -33,3 +33,5 @@
   --set prometheus.enabled=true \
   --set prometheus.port=9962
 ```
+
+https://docs.cilium.io/en/stable/observability/grafana/
