@@ -35,3 +35,20 @@
 ```
 
 https://docs.cilium.io/en/stable/observability/grafana/
+
+## Disable IPv6
+
+```
+helm upgrade cilium cilium/cilium --version v1.15.6 \
+  --namespace kube-system \
+  --reuse-values \
+  --set ipv6.enabled=false
+```
+
+```
+kubectl -n kube-system rollout restart daemonset cilium
+```
+
+```
+systemctl restart k3s
+```
