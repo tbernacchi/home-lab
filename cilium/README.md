@@ -1,7 +1,7 @@
 ## Upgrade
 
 ```
-⇒ helm upgrade --install cilium cilium/cilium --version v1.15.6 \
+helm upgrade --install cilium cilium/cilium --version v1.17.5 \
   --namespace kube-system \
   --set operator.replicas=1 \
   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.42.0.0/16 \
@@ -27,7 +27,7 @@
 ## Enable Prometheus
 
 ```
- helm upgrade cilium cilium/cilium --version v1.15.6 \
+ helm upgrade cilium cilium/cilium --version v1.17.5 \
   --namespace kube-system \
   --reuse-values \
   --set prometheus.enabled=true \
@@ -39,7 +39,7 @@ https://docs.cilium.io/en/stable/observability/grafana/
 ## Disable IPv6
 
 ```
-helm upgrade cilium cilium/cilium --version v1.15.6 \
+helm upgrade cilium cilium/cilium --version v1.17.5 \
   --namespace kube-system \
   --reuse-values \
   --set ipv6.enabled=false
@@ -52,3 +52,17 @@ kubectl -n kube-system rollout restart daemonset cilium
 ```
 systemctl restart k3s
 ```
+
+## Enable Gateway-API
+
+```
+helm upgrade cilium cilium/cilium --version v1.17.5 \
+  --namespace kube-system \
+  --reuse-values \
+  --set gatewayAPI.enabled=true
+```
+
+```
+cilium config view | grep "enable-gateway-api"
+```
+
