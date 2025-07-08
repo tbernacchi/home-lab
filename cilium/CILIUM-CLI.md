@@ -38,7 +38,16 @@ cilium connectivity test
 cilium monitor
 
 # Filter only HTTP traffic
-cilium monitor --type http
+cilium monitor --type l7
+
+# Monitoring events L7 (HTTP, DNS)
+cilium monitor --type l7
+
+# Monitor dropped packages
+cilium monitor --type drop
+
+# Logs of policies applied
+cilium monitor --type policy-verdict
 ```
 
 ---

@@ -62,6 +62,16 @@ helm upgrade cilium cilium/cilium --version v1.17.5 \
   --set gatewayAPI.enabled=true
 ```
 
+## Enable hubble flowVisibility
+
+```
+ helm upgrade cilium cilium/cilium --version v1.17.5 \ 
+ --namespace kube-system \ 
+ --reuse-values \ 
+ --set hubble.flowVisibility=full 
+ --set hubble.listenAddress=":4244"
+```
+
 ```
 cilium config view | grep "enable-gateway-api"
 ```
