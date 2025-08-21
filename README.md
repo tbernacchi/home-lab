@@ -73,27 +73,17 @@ systemctl restart k3s
 
 #### Join nodes to the cluster
 
-master node:
+To install additional agent nodes and add them to the cluster, run the installation script with the K3S_URL and K3S_TOKEN environment variables. Here is an example showing how to join an agent:
 
-```bash 
-cat /var/lib/rancher/k3s/server/node-token
-K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://myserver:6443 K3S_TOKEN=mynodetoken sh -
 ```
 
-worker node:
-```bash 
-export K3S_TOKEN=K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
-```
+Setting the K3S_URL parameter causes the installer to configure K3s as an agent, instead of a server. The K3s agent will register with the K3s server listening at the supplied URL. The value to use for K3S_TOKEN is stored at /var/lib/rancher/k3s/server/node-token on your server node.
 
-```bash 
-echo $K3S_TOKEN
-K10d84e93e2b80dcb4340fa8445df1c7c818d8b97bdc0a9b5cf8ac6798f82d5e33f::server:0224f4ef28fb909b59f12d2804196d89
-```
-```bash 
-curl -sfL https://get.k3s.io | K3S_TOKEN=$K3S_TOKEN sh -s - agent --server https://192.168.1.106:6443
-```
+[https://docs.k3s.io/quick-start](https://docs.k3s.io/quick-start)
 
-## Cilium 
+## Cilium
 
 ```bash
 helm repo add cilium https://helm.cilium.io/
@@ -235,18 +225,7 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 For this installation I've managed the UI through Traefik to access on `traefik.mykubernetes.com/argocd`.
 
 ```bash
-kubectl patch deployment argocd-server -n argocd --type='json' -p='[
-  {
-    "op": "replace",
-    "path": "/spec/template/spec/containers/0/args",
-    "value": [
-      "/usr/local/bin/argocd-server",
-      "--insecure",
-      "--basehref=/argocd",
-      "--rootpath=/argocd"
-    ]
-  }
-]'
+kubectl patch deployment argocd-server -n argocd --type='json' -p='[{"op":"replace","path":"/spec/template/spec/containers/0/args","value":["/usr/local/bin/argocd-server","--insecure","--basehref=/argocd","--rootpath=/argocd"]}]'
 ```
 
 ```bash
@@ -287,55 +266,7 @@ helm install argo-rollouts argo/argo-rollouts -n argo-rollouts --set dashboard.e
 ```
 
 ```bash
-kubectl patch deployment argocd-server -n argocd --type='json' -p='
-[
-  {
-    "op": "add",
-    "path": "/spec/template/spec/initContainers",
-    "value": [
-      {
-        "name": "rollout-extension",
-        "image": "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
-        "env": [
-          {
-            "name": "EXTENSION_URL",
-            "value": "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
-          }
-        ],
-        "volumeMounts": [
-          {
-            "name": "extensions",
-            "mountPath": "/tmp/extensions/"
-          }
-        ],
-        "securityContext": {
-          "runAsUser": 1000,
-          "allowPrivilegeEscalation": false
-        }
-      }
-    ]
-  },
-  {
-    "op": "add",
-    "path": "/spec/template/spec/volumes",
-    "value": [
-      {
-        "name": "extensions",
-        "emptyDir": {}
-      }
-    ]
-  },
-  {
-    "op": "add",
-    "path": "/spec/template/spec/containers/0/volumeMounts",
-    "value": [
-      {
-        "name": "extensions",
-        "mountPath": "/tmp/extensions/"
-      }
-    ]
-  }
-]'
+kubectl patch deployment argocd-server -n argocd --patch "$(cat argo-stack/argo-rollouts/patch-argocd-server.yaml)"
 ```
 
 ## argo-image-updater
