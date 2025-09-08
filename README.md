@@ -23,6 +23,9 @@
 - **[Argo Workflows](https://argoproj.github.io/workflows/)** - Kubernetes-native workflow engine
 - **[Argo Rollouts](https://argoproj.github.io/rollouts/)** - Progressive delivery controller
 
+## Database
+- **[CloudNativePG](https://cloudnative-pg.io/documentation/current/) - CloudNativePG operator to manage PostgreSQL
+
 ## Hand's on
 
 > For this setup I've disable `wlan0` interface and use only `eth0` for performance reasons.
