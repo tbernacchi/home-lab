@@ -98,7 +98,7 @@ The cluster includes Prometheus monitoring with `enablePodMonitor: true`.
 The CloudNative-PG cluster automatically creates a PodMonitor, but requires additional configuration to work with kube-prometheus-stack:
 
 1. **PodMonitor Patch** (`004-podmonitor-patch.yaml`):
-   - Adds required `Release: my-kube-prometheus-stack` label
+   - Adds required `release: my-kube-prometheus-stack` label
    - Enables Prometheus to discover the PostgreSQL metrics
 
 2. **Prometheus Configuration**:
@@ -117,8 +117,8 @@ The CloudNative-PG cluster automatically creates a PodMonitor, but requires addi
 kubectl get podmonitor -n postgres
 
 # Test metrics endpoint
-kubectl port-forward -n postgres pod/cnpg-cluster-1 9187:9187
-curl http://localhost:9187/metrics
+kubectl port-forward -n postgres pod/cnpg-cluster-1 9187:9187 --address 192.168.1.106
+curl -s http://192.168.1.106:9187/metrics | head -20
 ```
 
 ## 🔗 Documentation
