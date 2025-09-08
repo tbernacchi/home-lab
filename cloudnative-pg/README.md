@@ -6,10 +6,10 @@ This directory contains the configuration for deploying a PostgreSQL cluster usi
 
 ## 📁 Files
 
-- `storageclass.yaml` - Custom storage class for PostgreSQL
-- `postgresql-cluster.yaml` - PostgreSQL cluster configuration
-- `pooler.yaml` - PgBouncer connection pooler configuration
-- `local-path-patch.yaml` - Local-path provisioner configuration update
+- `000-local-path-patch.yaml` - Local-path provisioner configuration update
+- `001-storageclass.yaml` - Custom storage class for PostgreSQL
+- `002-postgresql-cluster.yaml` - PostgreSQL cluster configuration
+- `003-pooler.yaml` - PgBouncer connection pooler configuration
 
 ## 🚀 Installation
 
@@ -39,25 +39,25 @@ sudo chown -R 1000:1000 /opt/local-path-provisioner/cnpg
 
 ```bash
 # Update the local-path provisioner to recognize our custom path
-kubectl apply -f local-path-patch.yaml
+kubectl apply -f 000-local-path-patch.yaml
 ```
 
 ### 5. Deploy Storage Class
 
 ```bash
-kubectl apply -f storageclass.yaml
+kubectl apply -f 001-storageclass.yaml
 ```
 
 ### 6. Deploy PostgreSQL Cluster
 
 ```bash
-kubectl apply -f postgresql-cluster.yaml
+kubectl apply -f 002-postgresql-cluster.yaml
 ```
 
 ### 7. Deploy PgBouncer Pooler
 
 ```bash
-kubectl apply -f pooler.yaml
+kubectl apply -f 003-pooler.yaml
 ```
 
 ## 🎯 Cluster Configuration
