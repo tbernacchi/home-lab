@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cnpg-cluster
+  namespace: postgres
+  labels:
+    cnpg.io/cluster: cnpg-cluster
+    release: my-kube-prometheus-stack  # Label required to Prometheus collect
+spec:
+  namespaceSelector: {}
+  podMetricsEndpoints:
+  - port: metrics
+  selector:
+    matchLabels:
+      cnpg.io/cluster: cnpg-cluster
+      cnpg.io/podRole: instance

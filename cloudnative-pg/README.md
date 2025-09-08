@@ -10,6 +10,7 @@ This directory contains the configuration for deploying a PostgreSQL cluster usi
 - `001-storageclass.yaml` - Custom storage class for PostgreSQL
 - `002-postgresql-cluster.yaml` - PostgreSQL cluster configuration
 - `003-pooler.yaml` - PgBouncer connection pooler configuration
+- `004-podmonitor-patch.yaml` - PodMonitor patch for Prometheus monitoring
 
 ## 🚀 Installation
 
@@ -60,6 +61,24 @@ kubectl apply -f 002-postgresql-cluster.yaml
 kubectl apply -f 003-pooler.yaml
 ```
 
+### 8. Configure Prometheus Monitoring
+
+```bash
+# Apply PodMonitor patch (adds required labels for Prometheus)
+kubectl apply -f 004-podmonitor-patch.yaml
+
+# Configure Prometheus to collect from all namespaces
+kubectl patch prometheus my-kube-prometheus-stack-prometheus -n monitoring --type='merge' -p='{"spec":{"podMonitorNamespaceSelector":{}}}'
+```
+
+### 9. Check cluster state
+```bash
+kubectl get clusters.postgresql.cnpg.io -A
+
+NAMESPACE   NAME           AGE     INSTANCES   READY   STATUS                     PRIMARY
+postgres    cnpg-cluster   3h17m   3           3       Cluster in healthy state   cnpg-cluster-1
+```
+
 ## 🎯 Cluster Configuration
 
 - **Instances**: 3 PostgreSQL replicas
@@ -73,6 +92,34 @@ kubectl apply -f 003-pooler.yaml
 ## 📊 Monitoring
 
 The cluster includes Prometheus monitoring with `enablePodMonitor: true`.
+
+### **Prometheus Integration:**
+
+The CloudNative-PG cluster automatically creates a PodMonitor, but requires additional configuration to work with kube-prometheus-stack:
+
+1. **PodMonitor Patch** (`004-podmonitor-patch.yaml`):
+   - Adds required `Release: my-kube-prometheus-stack` label
+   - Enables Prometheus to discover the PostgreSQL metrics
+
+2. **Prometheus Configuration**:
+   - Configures Prometheus to collect metrics from all namespaces
+   - Ensures PodMonitors in the `postgres` namespace are discovered
+
+### **Available Metrics:**
+- `cnpg_backends_total` - Number of database connections
+- `cnpg_backends_max_tx_duration_seconds` - Transaction duration
+- `cnpg_collector_collection_duration_seconds` - Metrics collection time
+- And many more PostgreSQL-specific metrics
+
+### **Verification:**
+```bash
+# Check if PodMonitor is created
+kubectl get podmonitor -n postgres
+
+# Test metrics endpoint
+kubectl port-forward -n postgres pod/cnpg-cluster-1 9187:9187
+curl http://localhost:9187/metrics
+```
 
 ## 🔗 Documentation
 
