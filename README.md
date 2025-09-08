@@ -24,7 +24,7 @@
 - **[Argo Rollouts](https://argoproj.github.io/rollouts/)** - Progressive delivery controller
 
 ## Database
-- **[CloudNativePG](https://cloudnative-pg.io/documentation/current/) - CloudNativePG operator to manage PostgreSQL
+- **[CloudNativePG](https://cloudnative-pg.io/documentation/current/)** - CloudNativePG operator to manage PostgreSQL
 
 ## Hand's on
 
