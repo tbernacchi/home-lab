@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-path-config
+  namespace: kube-system
+data:
+  config.json: |
+    {
+      "nodePathMap":[
+      {
+        "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+        "paths":["/var/lib/rancher/k3s/storage"]
+      },
+      {
+        "node":"raspberrypi4-3-ecaeba11",
+        "paths":["/opt/local-path-provisioner/cnpg"]
+      },
+      {
+        "node":"raspberrypi4-4",
+        "paths":["/opt/local-path-provisioner/cnpg"]
+      },
+      {
+        "node":"raspberrypi4-5",
+        "paths":["/opt/local-path-provisioner/cnpg"]
+      }
+      ]
+    }
