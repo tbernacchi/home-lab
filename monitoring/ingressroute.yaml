@@ -11,17 +11,17 @@ spec:
     - match: Host(`traefik.mykubernetes.com`) && PathPrefix(`/prometheus`)
       kind: Rule
       services:
-        - name: my-kube-prometheus-stack-prometheus
+        - name: prometheus-stack-kube-prom-prometheus
           port: 9090
     - match: Host(`traefik.mykubernetes.com`) && PathPrefix(`/grafana`)
       kind: Rule
       services:
-        - name: my-kube-prometheus-stack-grafana
+        - name: prometheus-stack-grafana
           port: 80
     - match: Host(`traefik.mykubernetes.com`) && PathPrefix(`/alertmanager`)
       kind: Rule
       services:
-        - name: my-kube-prometheus-stack-alertmanager
+        - name: prometheus-stack-kube-prom-alertmanager
           port: 9093
   tls:
     secretName: traefik-dashboard-cert
