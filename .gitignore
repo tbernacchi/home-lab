@@ -1,1 +1,8 @@
 .DS_Store
+
+# Certificate files (generated)
+certs/*.crt
+certs/*.key
+certs/*.csr
+certs/*.srl
+certs/*.conf
