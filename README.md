@@ -148,9 +148,53 @@ secret/traefik-dashboard-cert created
 
 Add your `ca.crt` to the system keychain. If you are using macOS:
 
+#### First time installation
+
 ```bash  
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./ca.crt
 ```
+
+#### Updating certificate (if already exists)
+
+If you need to update the certificate and there are already old certificates in the keychain:
+
+1. **Find existing certificates:**
+
+```bash
+security find-certificate -a -c "MyKubernetes CA" -Z /Library/Keychains/System.keychain | grep "SHA-1 hash" | awk '{print $3}'
+```
+
+2. **Remove old certificates by SHA-1 hash:**
+
+```bash
+sudo security delete-certificate -Z <SHA-1_HASH> /Library/Keychains/System.keychain
+```
+
+Repeat for each old certificate hash found in step 1.
+
+3. **Add the new certificate:**
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./ca.crt
+```
+
+4. **Verify the certificate was added:**
+
+```bash
+security find-certificate -c "MyKubernetes CA" /Library/Keychains/System.keychain -Z | grep "SHA-1 hash"
+```
+
+The SHA-1 hash should match your new certificate:
+```bash
+openssl x509 -in ca.crt -noout -fingerprint -sha1 | cut -d= -f2 | tr ':' ' ' | tr -d ' '
+```
+
+5. **Clear browser HSTS cache (Chrome):**
+
+- Open `chrome://net-internals/#hsts`
+- In "Delete domain security policies", enter: `traefik.mykubernetes.com`
+- Click "Delete"
+- Or clear all browser cache and restart the browser
 
 ## Monitoring
 

@@ -154,11 +154,53 @@ kubectl get secret traefik-dashboard-cert -n monitoring -o jsonpath='{.data.tls\
 
 #### 5. Add CA to system keychain (macOS)
 
-If you get certificate errors in the browser, add the CA certificate to your system keychain:
+If you get certificate errors in the browser, add the CA certificate to your system keychain.
+
+**First time installation:**
 
 ```bash
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ../certs/ca.crt
 ```
+
+**Updating certificate (if already exists):**
+
+1. **Find existing certificates:**
+
+```bash
+security find-certificate -a -c "MyKubernetes CA" -Z /Library/Keychains/System.keychain | grep "SHA-1 hash" | awk '{print $3}'
+```
+
+2. **Remove old certificates by SHA-1 hash:**
+
+```bash
+sudo security delete-certificate -Z <SHA-1_HASH> /Library/Keychains/System.keychain
+```
+
+Repeat for each old certificate hash found in step 1.
+
+3. **Add the new certificate:**
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ../certs/ca.crt
+```
+
+4. **Verify the certificate was added:**
+
+```bash
+security find-certificate -c "MyKubernetes CA" /Library/Keychains/System.keychain -Z | grep "SHA-1 hash"
+```
+
+The SHA-1 hash should match your new certificate:
+```bash
+openssl x509 -in ../certs/ca.crt -noout -fingerprint -sha1 | cut -d= -f2 | tr ':' ' ' | tr -d ' '
+```
+
+5. **Clear browser HSTS cache (Chrome):**
+
+- Open `chrome://net-internals/#hsts`
+- In "Delete domain security policies", enter: `traefik.mykubernetes.com`
+- Click "Delete"
+- Or clear all browser cache and restart the browser
 
 **Note:** After generating a new certificate, you may need to clear your browser cache or use incognito mode to avoid HSTS (HTTP Strict Transport Security) issues.
 
