@@ -1,0 +1,16 @@
+# Cluster CloudNative-PG simples para Metabase (Kind)
+# 1 instância, sem pooler, sem monitoring
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cnpg-metabase
+  namespace: postgres
+spec:
+  instances: 1
+  storage:
+    size: 2Gi
+    # Kind usa a StorageClass padrão "standard"; se não existir, instale local-path-provisioner
+    storageClass: standard
+  postgresql:
+    parameters:
+      max_connections: "50"
