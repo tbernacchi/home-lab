@@ -1,0 +1,38 @@
+# ICA Domain: Resilience — Timeouts and Retries
+# 2s timeout on ratings + 3 retries with 25s per-try timeout on reviews.
+# Apply:   kubectl apply -f 07-request-timeout-retry.yaml
+# Test timeout: combine with 02-fault-injection.yaml delay on ratings → observe timeout behavior
+# Reset:   kubectl delete -f 07-request-timeout-retry.yaml
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: ratings
+  namespace: default
+spec:
+  hosts:
+    - ratings
+  http:
+    - route:
+        - destination:
+            host: ratings
+            subset: v1
+      timeout: 2s
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: default
+spec:
+  hosts:
+    - reviews
+  http:
+    - route:
+        - destination:
+            host: reviews
+            subset: v2
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: gateway-error,connect-failure,retriable-4xx

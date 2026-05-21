@@ -1,0 +1,52 @@
+# ICA Domain: Resilience & Fault Tolerance
+# Injects a 7s delay for user "jason" on ratings service + 50% HTTP 500 abort on reviews.
+# Apply:   kubectl apply -f 02-fault-injection.yaml
+# Verify delay:  curl -s -H "end-user: jason" http://localhost:8080/productpage (slow)
+# Verify abort:  curl -s http://localhost:8080/productpage | grep "Reviews service is currently unavailable"
+# Reset:   kubectl delete -f 02-fault-injection.yaml
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: ratings
+  namespace: default
+spec:
+  hosts:
+    - ratings
+  http:
+    - match:
+        - headers:
+            end-user:
+              exact: jason
+      fault:
+        delay:
+          percentage:
+            value: 100
+          fixedDelay: 7s
+      route:
+        - destination:
+            host: ratings
+            subset: v1
+    - route:
+        - destination:
+            host: ratings
+            subset: v1
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: default
+spec:
+  hosts:
+    - reviews
+  http:
+    - fault:
+        abort:
+          percentage:
+            value: 50
+          httpStatus: 500
+      route:
+        - destination:
+            host: reviews
+            subset: v1

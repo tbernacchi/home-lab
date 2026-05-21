@@ -1,0 +1,39 @@
+# ICA Domain: Resilience — Circuit Breaker (outlier detection)
+# Ejects hosts with >2 consecutive 5xx errors for 30s.
+# Apply:   kubectl apply -f 05-circuit-breaker.yaml
+# Test with fortio:
+#   kubectl apply -f https://raw.githubusercontent.com/istio/istio/1.24.3/samples/httpbin/sample-client/fortio-deploy.yaml
+#   FORTIO_POD=$(kubectl get pod -l app=fortio -o jsonpath='{.items[0].metadata.name}')
+#   kubectl exec "$FORTIO_POD" -- fortio load -c 3 -qps 0 -n 30 -loglevel Warning \
+#     http://productpage:9080/productpage
+# Observe ejections: kubectl exec "$FORTIO_POD" -- pilot-agent request GET /stats | grep upstream_rq_pending_overflow
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: reviews
+  namespace: default
+spec:
+  host: reviews
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http1MaxPendingRequests: 1
+        maxRequestsPerConnection: 1
+    outlierDetection:
+      consecutive5xxErrors: 2
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 100
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+    - name: v3
+      labels:
+        version: v3

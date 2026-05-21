@@ -1,0 +1,19 @@
+# ICA Domain: Securing Workloads — mTLS
+# Enables STRICT mTLS for the default namespace.
+# Apply:   kubectl apply -f 03-mtls-strict.yaml
+# Verify:  istioctl authn tls-check <pod>.<namespace> reviews.default.svc.cluster.local
+#          Should show: OK / mTLS
+# Test no-sidecar rejection:
+#   kubectl run curl --image=curlimages/curl -it --rm --restart=Never -- \
+#     curl http://productpage.default:9080/productpage
+#   (should fail — no sidecar, rejected by mTLS policy)
+# Reset:   kubectl delete -f 03-mtls-strict.yaml
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: default
+spec:
+  mtls:
+    mode: STRICT

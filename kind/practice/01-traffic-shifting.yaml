@@ -1,0 +1,25 @@
+# ICA Domain: Traffic Management
+# Canary: 90% traffic to reviews-v1, 10% to reviews-v3
+# Apply:  kubectl apply -f 01-traffic-shifting.yaml
+# Verify: watch -n1 'curl -s http://localhost:8080/productpage | grep -c "glyphicon-star"'
+#         (star ratings appear when hitting v3 ~10% of requests)
+# Reset:  kubectl apply -f https://raw.githubusercontent.com/istio/istio/1.24.3/samples/bookinfo/networking/virtual-service-all-v1.yaml
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: reviews
+  namespace: default
+spec:
+  hosts:
+    - reviews
+  http:
+    - route:
+        - destination:
+            host: reviews
+            subset: v1
+          weight: 90
+        - destination:
+            host: reviews
+            subset: v3
+          weight: 10
