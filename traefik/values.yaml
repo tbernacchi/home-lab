@@ -1,54 +1,160 @@
 ports:
   web:
     port: 80
+    forwardedHeaders:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
+        - 192.168.1.130/32
+        - 10.0.0.145/32
+    proxyProtocol:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
+        - 192.168.1.130
+        - 10.0.0.145/32
   websecure:
     port: 443
     tls:
       enabled: true
       options: default
+    forwardedHeaders:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
+        - 192.168.1.130/32
+        - 10.0.0.145/32
+    proxyProtocol:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
+        - 192.168.1.130
+        - 10.0.0.145/32
   metrics:
     port: 8899
-    expose: {}
+    expose:
+      default: true
+    exposedPort: 8899
     protocol: TCP
 
-dashboard: # Enable an ingress-route for the dashboard #189
+dashboard:
   enabled: true
-  domain: "traefik.mykubernetes.com"  
+  domain: "traefik.mykubernetes.com"
 
-# Enable Prometheus metrics and create automatically a service and a ServiceMonitor.
-metrics:  
+metrics:
   prometheus:
     entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    buckets: "0.100000, 0.300000, 1.200000, 5.000000"
     service:
       enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false
 
 logs:
   access:
     enabled: true
+    fields:
+      defaultMode: keep
+      headers:
+        defaultMode: drop
+        names:
+          X-Real-IP: keep
+          X-Forwarded-For: keep
+          CF-Connecting-IP: keep
+          CF-IPCountry: keep
+          CF-IPCity: keep
+          CF-Region: keep
+          CF-Latitude: keep
+          CF-Longitude: keep
 
 providers:
-  kubernetesCRD: # Load Kubernetes IngressRoute providers; IngressRoute, Middleware, etc.
+  kubernetesCRD:
     enabled: true
-  kubernetesGateway: # Enable Kubernetes Gateway API provider (required for Argo Rollouts Gateway API plugin)
+    allowCrossNamespace: true
+  kubernetesIngress:
+    enabled: true
+    allowEmptyServices: true
+  kubernetesGateway:
     enabled: true
 
+gatewayClass:
+  enabled: true
+  name: traefik
+
+gateway:
+  enabled: true
+  name: traefik-gateway
+  namespace: traefik
+  listeners:
+    web:
+      port: 80
+      protocol: HTTP
+      namespacePolicy:
+        from: All
+
 additionalArguments:
-  - "--api.dashboard=true"  # Enable the dashboard
-  - "--api.insecure=false"  # Disable insecure API
-  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"  # Redirect HTTP to HTTPS
-  - "--log.level=DEBUG"  # Set log level to DEBUG
-  - "--serversTransport.insecureSkipVerify=false"  # Skip TLS verification - My cert is self-signed. I've added my ca.crt (ServerTransport).
-  - "--metrics.prometheus=true"  # Enable Prometheus metrics
-  - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"  # Set Prometheus buckets
-  - "--metrics.prometheus.addEntryPointsLabels=true"  # Add entry points labels
-  - "--metrics.prometheus.addServicesLabels=true"  # Add services labels
-  - "--entryPoints.metrics.address=:8899"  # Set metrics address
-  - "--metrics.prometheus.entryPoint=metrics"  # Set metrics entry point
-  - "--tracing.otlp=true"  # Enable OTLP tracing
-  - "--tracing.otlp.http=true"  # Enable HTTP tracing
-  - "--tracing.otlp.http.endpoint=http://jaeger-collector.observability.svc:4318/v1/traces"  # Set OTLP endpoint
+  - "--api.dashboard=true"
+  - "--api.insecure=false"
+  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+  - "--log.level=DEBUG"
+  - "--serversTransport.insecureSkipVerify=false"
+  - "--tracing.otlp=true"
+  - "--tracing.otlp.http=true"
+  - "--tracing.otlp.http.endpoint=http://jaeger-collector.observability.svc:4318/v1/traces"
 
 globalArguments:
   - "--global.checknewversion=false"
