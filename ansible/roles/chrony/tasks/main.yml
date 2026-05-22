@@ -1,9 +1,8 @@
 ---
 - name: Install chrony
-  ansible.builtin.apt:
-    name: chrony
-    state: present
-    update_cache: true
+  ansible.builtin.shell: apt-get install -y --no-install-recommends chrony
+  args:
+    creates: /usr/sbin/chronyd
 
 - name: Stop and disable systemd-timesyncd
   ansible.builtin.systemd:
