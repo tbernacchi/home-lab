@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate
+  namespace: app
+spec:
+  metrics:
+    - name: error-rate
+      interval: 60s
+      count: 3
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090/prometheus
+          query: |
+            (
+              sum(rate(traefik_service_requests_total{service=~"app-<APP_NAME>.*",code=~"5.."}[2m])) or vector(0)
+            )
+            /
+            (
+              sum(rate(traefik_service_requests_total{service=~"app-<APP_NAME>.*"}[2m])) or vector(1)
+            )
+      successCondition: "result[0] < 0.05"
+      failureCondition: "result[0] >= 0.05"
