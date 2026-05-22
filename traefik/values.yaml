@@ -31,6 +31,8 @@ logs:
 providers:
   kubernetesCRD: # Load Kubernetes IngressRoute providers; IngressRoute, Middleware, etc.
     enabled: true
+  kubernetesGateway: # Enable Kubernetes Gateway API provider (required for Argo Rollouts Gateway API plugin)
+    enabled: true
 
 additionalArguments:
   - "--api.dashboard=true"  # Enable the dashboard
