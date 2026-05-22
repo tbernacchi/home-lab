@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: tbernacchi
+  description: Install and configure chrony NTP on Raspberry Pi K3s nodes
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "24.04"
+  galaxy_tags:
+    - ntp
+    - chrony
+    - raspberrypi
+
+dependencies: []

@@ -1,0 +1,6 @@
+---
+- name: Configure NTP with chrony on K3s nodes
+  hosts: k3s_nodes
+  gather_facts: true
+  roles:
+    - chrony
