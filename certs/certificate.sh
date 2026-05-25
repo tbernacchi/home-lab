@@ -1,45 +1,40 @@
-# Generate CA private key
-openssl genrsa -out ca.key 4096
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Generate CA certificate
-openssl req -x509 -new -nodes -key ca.key -sha256 -days 1024 -out ca.crt \
-  -subj "/C=BR/ST=SP/L=Sao Paulo/O=MyKubernetes/CN=MyKubernetes CA"
+DOMAIN="traefik.mykubernetes.com"
 
-# Generate certificate private key
-openssl genrsa -out tls.key 2048
+# mkcert handles CA creation, keychain trust, and SAN automatically.
+# Prerequisite: brew install mkcert
 
-# Create OpenSSL configuration file
-cat > traefik.conf <<EOF
-[req]
-req_extensions = v3_req
-distinguished_name = req_distinguished_name
+# Install mkcert CA into OS trust store (idempotent)
+mkcert -install
 
-[req_distinguished_name]
+# Generate cert + key for the domain
+mkcert "$DOMAIN"
 
-[v3_req]
-basicConstraints = CA:FALSE
-keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-subjectAltName = @alt_names
+CERT_FILE="${DOMAIN}.pem"
+KEY_FILE="${DOMAIN}-key.pem"
 
-[alt_names]
-DNS.1 = traefik.mykubernetes.com
-EOF
+# Verify SAN is present
+echo "--- cert details ---"
+openssl x509 -noout -subject -issuer -ext san -in "$CERT_FILE"
+echo "--------------------"
 
-# Generate certificate signing request (CSR)
-openssl req -new -key tls.key -out tls.csr \
-  -subj "/C=BR/ST=SP/L=Sao Paulo/O=MyKubernetes/CN=traefik.mykubernetes.com" \
-  -config traefik.conf
-
-# Sign the certificate with our CA
-openssl x509 -req -in tls.csr \
-  -CA ca.crt -CAkey ca.key -CAcreateserial \
-  -out tls.crt -days 365 -sha256 \
-  -extensions v3_req -extfile traefik.conf
-
-# Create Kubernetes TLS secrets
+# Apply secrets to cluster
 kubectl create secret tls traefik-dashboard-cert \
-  --cert=tls.crt \
-  --key=tls.key \
+  --cert="$CERT_FILE" \
+  --key="$KEY_FILE" \
   -n traefik \
   --dry-run=client -o yaml | kubectl apply -f -
 
+kubectl create secret tls traefik-dashboard-cert \
+  --cert="$CERT_FILE" \
+  --key="$KEY_FILE" \
+  -n monitoring \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart Traefik to pick up new cert
+kubectl rollout restart deployment traefik -n traefik
+kubectl rollout status deployment traefik -n traefik --timeout=60s
+
+echo "Done. Access https://${DOMAIN}/prometheus"
