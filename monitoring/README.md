@@ -92,8 +92,31 @@ kubectl get pods -n monitoring
 
 Access the services:
 - **Prometheus**: https://traefik.mykubernetes.com/prometheus
-- **Grafana**: https://traefik.mykubernetes.com/grafana (user: `admin`, password: from step 7)
+- **Grafana**: https://traefik.mykubernetes.com/grafana (user: `admin`, password: from step 8)
 - **Alertmanager**: https://traefik.mykubernetes.com/alertmanager
+
+> **Common issue — services returning 404:** The `ingressroute.yaml` must be explicitly applied after Helm install — it is not managed by Helm.
+> ```bash
+> kubectl apply -f ingressroute.yaml
+> kubectl get ingressroute -n monitoring  # confirm it appears
+> ```
+
+> **Common issue — `ERR_CERT_AUTHORITY_INVALID` in browser:** The cluster uses a self-signed CA (`MyKubernetes CA`). Install it in the OS trust store:
+> ```bash
+> # export the CA from the cluster
+> kubectl get secret traefik-dashboard-cert -n monitoring \
+>   -o jsonpath='{.data.tls\.crt}' | base64 -d > mykubernetes-ca.crt
+>
+> # install on macOS
+> sudo security add-trusted-cert -d -r trustRoot \
+>   -k /Library/Keychains/System.keychain mykubernetes-ca.crt
+> ```
+> Fully quit Chrome (Cmd+Q) and reopen. If still blocked by HSTS:
+> - Open `chrome://net-internals/#hsts`
+> - Under "Delete domain security policies" → enter `traefik.mykubernetes.com` → Delete
+> - Reopen the tab
+
+> **Common issue — Prometheus returning 301 but not loading:** `301` is expected — Prometheus redirects `/prometheus` → `/prometheus/graph`. Use `curl -skL` (follow redirects) to confirm `200`. If browser still fails, it's the cert issue above.
 
 ## Configuration
 
