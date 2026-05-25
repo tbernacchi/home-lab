@@ -7,6 +7,8 @@ Traefik v3 deployed via Helm chart `traefik/traefik` (chart 38.0.1, app v3.6.5) 
 | File | Purpose |
 |------|---------|
 | `values.yaml` | Helm values for Traefik deployment |
+| `gateway.yaml` | Full Gateway manifest — `web` (80) + `websecure` (443/HTTPS) listeners |
+| `helmchartconfig.yaml` | K3s HelmChartConfig — enables Prometheus metrics on port 8899 |
 | `dashboard.yaml` | IngressRoute for the Traefik dashboard |
 
 ## Helm install
@@ -21,38 +23,20 @@ helm upgrade --install traefik traefik/traefik \
 
 ## Gateway API listeners
 
-The Helm-managed Gateway (`traefik-gateway` in `traefik` namespace) is configured with a `web` listener (port 80, HTTP) in `values.yaml`. After install, a `websecure` listener (port 443, HTTPS) must be added via `kubectl patch` because the chart 38.0.1 schema does not allow `gateway.listeners.<name>.tls` in values:
+The Gateway is managed via `gateway.yaml` (not by Helm). The Helm chart (38.0.1) schema rejects `gateway.listeners.<name>.tls` in `values.yaml`, so the Gateway is applied independently:
 
 ```bash
-kubectl patch gateway traefik-gateway -n traefik --type=json -p='[
-  {
-    "op": "add",
-    "path": "/spec/listeners/-",
-    "value": {
-      "name": "websecure",
-      "port": 443,
-      "protocol": "HTTPS",
-      "tls": {
-        "mode": "Terminate",
-        "certificateRefs": [
-          {
-            "kind": "Secret",
-            "name": "traefik-cert",
-            "namespace": "traefik"
-          }
-        ]
-      },
-      "allowedRoutes": {
-        "namespaces": {
-          "from": "All"
-        }
-      }
-    }
-  }
-]'
+kubectl apply -f traefik/gateway.yaml
 ```
 
-> **Note:** `helm upgrade` reverts the Gateway to Helm-managed state and removes the patched listener. Re-apply the patch after every Helm upgrade.
+This creates `traefik-gateway` in the `traefik` namespace with two listeners:
+
+| Listener | Port | Protocol | TLS cert |
+|----------|------|----------|----------|
+| `web` | 80 | HTTP | — |
+| `websecure` | 443 | HTTPS | `traefik-cert` secret |
+
+> `helm upgrade` does not touch the Gateway when it is applied separately — no need to re-patch after upgrades. If Helm recreates it (e.g. fresh install), re-apply `gateway.yaml`.
 
 ### Verify listeners
 
