@@ -15,12 +15,12 @@ mkcert "$DOMAIN"
 CERT_FILE="${DOMAIN}.pem"
 KEY_FILE="${DOMAIN}-key.pem"
 
-# Verify SAN is present
+# Verify SAN is present (use -text, LibreSSL doesn't support -ext san)
 echo "--- cert details ---"
-openssl x509 -noout -subject -issuer -ext san -in "$CERT_FILE"
+openssl x509 -text -noout -in "$CERT_FILE" | grep -A2 "Subject Alternative"
 echo "--------------------"
 
-# Apply secrets to cluster
+# traefik-dashboard-cert: used by IngressRoutes (dashboard, monitoring)
 kubectl create secret tls traefik-dashboard-cert \
   --cert="$CERT_FILE" \
   --key="$KEY_FILE" \
@@ -31,6 +31,14 @@ kubectl create secret tls traefik-dashboard-cert \
   --cert="$CERT_FILE" \
   --key="$KEY_FILE" \
   -n monitoring \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# traefik-cert: default cert for Gateway websecure listener (port 443)
+# must also be updated — otherwise Traefik serves this old cert for all SNI
+kubectl create secret tls traefik-cert \
+  --cert="$CERT_FILE" \
+  --key="$KEY_FILE" \
+  -n traefik \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # Restart Traefik to pick up new cert

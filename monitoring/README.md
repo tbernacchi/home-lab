@@ -135,97 +135,58 @@ Resource limits and requests are configured in `values.yaml`:
 
 ### SSL/TLS Certificate
 
-The IngressRoute uses the `traefik-dashboard-cert` secret for TLS encryption. If the certificate is missing or expired, follow these steps:
+The IngressRoute uses `traefik-dashboard-cert` for TLS. Certs are generated via `mkcert` (handles CA trust + SAN automatically — macOS LibreSSL cannot generate certs with SAN via `openssl x509 -req`).
 
-#### 1. Check if certificate exists in monitoring namespace
+#### Prerequisite
 
 ```bash
-kubectl get secret traefik-dashboard-cert -n monitoring
+brew install mkcert
 ```
 
-#### 2. Generate new certificate (if needed)
-
-If the certificate is missing or expired, generate a new one:
+#### Generate and apply certs
 
 ```bash
 cd ../certs
-./certificate.sh
+bash certificate.sh
 ```
 
-This will create the `traefik-dashboard-cert` secret in the `traefik` namespace.
+The script:
+1. Runs `mkcert -install` — creates and installs the mkcert CA in the macOS keychain
+2. Generates `traefik.mykubernetes.com.pem` + key with correct SAN
+3. Applies `traefik-dashboard-cert` secret to `traefik` and `monitoring` namespaces
+4. Updates `traefik-cert` secret in `traefik` namespace (used by Gateway websecure listener as default cert)
+5. Restarts Traefik
 
-#### 3. Copy certificate to monitoring namespace
+> **Why both secrets?** `traefik-cert` is the default cert for the Gateway `websecure` listener (port 443). If it holds the old cert, Traefik serves it instead of `traefik-dashboard-cert` even when the IngressRoute specifies the latter. Both must be updated.
 
-The IngressRoute needs the certificate in the `monitoring` namespace:
+#### Verify cert served by Traefik
 
 ```bash
-kubectl get secret traefik-dashboard-cert -n traefik -o yaml | \
-  sed 's/namespace: traefik/namespace: monitoring/' | \
-  sed '/resourceVersion:/d' | \
-  sed '/uid:/d' | \
-  kubectl apply -f -
+echo | openssl s_client -connect 192.168.1.131:443 \
+  -servername traefik.mykubernetes.com 2>/dev/null \
+  | openssl x509 -noout -issuer
+
+# expected: issuer=O=mkcert development CA, ...
 ```
 
-#### 4. Verify certificate validity
-
-Check certificate expiration date:
-
+Verify SAN (use `-text` — LibreSSL doesn't support `-ext san`):
 ```bash
-kubectl get secret traefik-dashboard-cert -n monitoring -o jsonpath='{.data.tls\.crt}' | \
-  base64 -d | openssl x509 -noout -dates -subject
+openssl x509 -text -noout \
+  -in ../certs/traefik.mykubernetes.com.pem \
+  | grep -A2 "Subject Alternative"
+
+# expected: DNS:traefik.mykubernetes.com
 ```
 
-#### 5. Add CA to system keychain (macOS)
+#### After running the script — browser steps
 
-If you get certificate errors in the browser, add the CA certificate to your system keychain.
+1. **Clear HSTS cache in Chrome:**
+   - Open `chrome://net-internals/#hsts`
+   - "Delete domain security policies" → `traefik.mykubernetes.com` → Delete
 
-**First time installation:**
+2. **Fully quit Chrome** (Cmd+Q — not just close the window)
 
-```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ../certs/ca.crt
-```
-
-**Updating certificate (if already exists):**
-
-1. **Find existing certificates:**
-
-```bash
-security find-certificate -a -c "MyKubernetes CA" -Z /Library/Keychains/System.keychain | grep "SHA-1 hash" | awk '{print $3}'
-```
-
-2. **Remove old certificates by SHA-1 hash:**
-
-```bash
-sudo security delete-certificate -Z <SHA-1_HASH> /Library/Keychains/System.keychain
-```
-
-Repeat for each old certificate hash found in step 1.
-
-3. **Add the new certificate:**
-
-```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ../certs/ca.crt
-```
-
-4. **Verify the certificate was added:**
-
-```bash
-security find-certificate -c "MyKubernetes CA" /Library/Keychains/System.keychain -Z | grep "SHA-1 hash"
-```
-
-The SHA-1 hash should match your new certificate:
-```bash
-openssl x509 -in ../certs/ca.crt -noout -fingerprint -sha1 | cut -d= -f2 | tr ':' ' ' | tr -d ' '
-```
-
-5. **Clear browser HSTS cache (Chrome):**
-
-- Open `chrome://net-internals/#hsts`
-- In "Delete domain security policies", enter: `traefik.mykubernetes.com`
-- Click "Delete"
-- Or clear all browser cache and restart the browser
-
-**Note:** After generating a new certificate, you may need to clear your browser cache or use incognito mode to avoid HSTS (HTTP Strict Transport Security) issues.
+3. Reopen and access `https://traefik.mykubernetes.com/prometheus`
 
 ## UPDATE
 
