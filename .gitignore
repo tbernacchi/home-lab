@@ -3,6 +3,9 @@
 # Certificate files (generated)
 certs/*.crt
 certs/*.key
+certs/*.pem
 certs/*.csr
 certs/*.srl
 certs/*.conf
+certs/*.ext
+*.crt
