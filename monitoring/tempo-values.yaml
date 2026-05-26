@@ -15,6 +15,21 @@ tempo:
         http:
           endpoint: 0.0.0.0:4318
 
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090/prometheus/api/v1/write
+
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+          - local-blocks
+
+tempoQuery:
+  enabled: false
+
 persistence:
   enabled: true
   storageClassName: local-path
