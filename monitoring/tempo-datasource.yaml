@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-datasource
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  tempo-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3200
+        version: 1
+        editable: true
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: ''
+          nodeGraph:
+            enabled: true
+          serviceMap:
+            datasourceUid: 'prometheus'
+          search:
+            hide: false
+          lokiSearch:
+            datasourceUid: ''

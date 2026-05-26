@@ -50,10 +50,16 @@ alertmanager:
 
 grafana:
   enabled: true
+  # prometheus-stack nao e gerenciado pelo Helm — estas configuracoes NAO sao aplicadas automaticamente.
+  # Para aplicar, patch manual no ConfigMap:
+  #   kubectl get configmap prometheus-stack-grafana -n monitoring -o json | \
+  #     python3 -c "..." | kubectl apply -f -
+  # Ver README.md para o comando completo.
   grafana.ini:
     server:
-      serve_from_sub_path: true  # Do kubectl set env GF_SERVER_SERVE_FROM_SUB_PATH
-      root_url: /grafana  # Do kubectl set env GF_SERVER_ROOT_URL
+      domain: traefik.mykubernetes.com
+      root_url: https://traefik.mykubernetes.com/grafana  # URL absoluta — relativo (/grafana) nao funciona
+      serve_from_sub_path: true
   resources:
     requests:
       memory: "256Mi"

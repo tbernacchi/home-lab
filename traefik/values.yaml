@@ -154,7 +154,7 @@ additionalArguments:
   - "--serversTransport.insecureSkipVerify=false"
   - "--tracing.otlp=true"
   - "--tracing.otlp.http=true"
-  - "--tracing.otlp.http.endpoint=http://jaeger-collector.observability.svc:4318/v1/traces"
+  - "--tracing.otlp.http.endpoint=http://tempo.monitoring.svc:4318/v1/traces"
 
 globalArguments:
   - "--global.checknewversion=false"
