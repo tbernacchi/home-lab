@@ -1,4 +1,6 @@
 .DS_Store
+raspberry-bkp/backups/
+*.tar.gz
 
 # Certificate files (generated)
 certs/*.crt
@@ -9,3 +11,4 @@ certs/*.srl
 certs/*.conf
 certs/*.ext
 *.crt
+raspberry-bkp/

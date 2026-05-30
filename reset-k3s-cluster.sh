@@ -20,6 +20,8 @@ K3S_VERSION=""
 WORKERS=""
 SSH_USER="root"
 SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+UNINSTALL_ONLY=false
+NODE_IP=""
 
 show_help() {
     echo -e "${BLUE}Uso:${NC} sudo $0 --version VERSION [opções]"
@@ -30,6 +32,8 @@ show_help() {
     echo -e "${YELLOW}Opcional:${NC}"
     echo "  --workers IP1,IP2   IPs dos agents; roda desinstalação remota via SSH"
     echo "  --ssh-user USER     Usuário SSH (padrão: root)"
+    echo "  --node-ip IP        IP do nó (evita pegar interface errada)"
+    echo "  --uninstall-only    Só remove, não reinstala"
     echo "  -h, --help          Ajuda"
     echo ""
     echo -e "${YELLOW}Depois:${NC} nos workers, use reset-and-join-node.sh com a mesma versão."
@@ -49,6 +53,14 @@ while [[ $# -gt 0 ]]; do
             SSH_USER="${2:-}"
             shift 2
             ;;
+        --node-ip)
+            NODE_IP="${2:-}"
+            shift 2
+            ;;
+        --uninstall-only)
+            UNINSTALL_ONLY=true
+            shift
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -66,7 +78,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-if [[ -z "$K3S_VERSION" ]]; then
+if [[ -z "$K3S_VERSION" ]] && [[ "$UNINSTALL_ONLY" == false ]]; then
     echo -e "${RED}Falta --version${NC}"
     show_help
     exit 1
@@ -133,12 +145,19 @@ iptables -F 2>/dev/null || true
 iptables -t nat -F 2>/dev/null || true
 iptables -t mangle -F 2>/dev/null || true
 
+if [[ "$UNINSTALL_ONLY" == true ]]; then
+    echo -e "\n${GREEN}✓ Desinstalação concluída. K3s removido.${NC}"
+    exit 0
+fi
+
 echo -e "\n${YELLOW}[3/3] Instalando K3s server (cluster-init + flags do home-lab)...${NC}"
 
 export K3S_KUBECONFIG_MODE="644"
 # Alinhado ao README: etcd via --cluster-init, sem flannel/traefik/servicelb
 # Flags do server (o instalador já usa o subcomando server neste nó)
-export INSTALL_K3S_EXEC="--cluster-init --flannel-backend=none --disable-network-policy --disable servicelb --disable traefik"
+NODE_IP_FLAGS=""
+[[ -n "$NODE_IP" ]] && NODE_IP_FLAGS="--node-ip ${NODE_IP} --advertise-address ${NODE_IP}"
+export INSTALL_K3S_EXEC="--cluster-init --flannel-backend=none --disable-network-policy --disable servicelb --disable traefik ${NODE_IP_FLAGS}"
 
 if [[ "$K3S_VERSION" == "latest" ]]; then
     unset INSTALL_K3S_VERSION
