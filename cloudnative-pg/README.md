@@ -150,6 +150,35 @@ postgresql://user:password@cnpg-cluster-r.postgres.svc.cluster.local:5432/databa
 - **`cnpg-cluster-ro`**: Replica instances (read-only)
 - **`cnpg-cluster-r`**: Alias for read-only (compatibility)
 
+## 🐛 Troubleshooting
+
+### ImagePullBackOff: unexpected commit digest (layer mismatch)
+
+**Symptom:** Pod fails with error like:
+```
+failed commit on ref "layer-sha256:c55b11ec...": unexpected commit digest sha256:XXX, expected sha256:c55b11ec...
+```
+
+**Cause:** PostgreSQL 17.5 was released recently and its GHCR manifest causes a layer digest mismatch on arm64/RPi — the downloaded digest never matches the expected one, regardless of retries. The image `imageName` is pinned to `17.4` in `002-postgresql-cluster.yaml` to avoid this.
+
+**If it happens again after an operator upgrade:**
+1. Check which layer is corrupted (hash in the error)
+2. Remove it from the K3s containerd content store:
+   ```bash
+   export CONTAINER_RUNTIME_ENDPOINT=unix:///run/k3s/containerd/containerd.sock
+   sudo k3s ctr content ls | grep <short-hash>
+   sudo k3s ctr content rm sha256:<full-hash>
+   ```
+3. Delete the cluster and PVCs (safe if no data yet), then recreate:
+   ```bash
+   kubectl delete cluster cnpg-cluster -n postgres
+   kubectl delete pvc -n postgres --all
+   kubectl apply -f 002-postgresql-cluster.yaml
+   ```
+4. If the operator ignores the `imageName` change and keeps using the old version, the cluster must be deleted and recreated — patching the spec alone does not force pod recreation with the new image.
+
+**Why 17.4 and not 17.5:** During cluster rebuild on 2026-05-30, every pull of `17.5` failed with a different actual digest each attempt, indicating network-level corruption of a specific shared layer (`c55b11ec`). `17.4` pulled cleanly. Pin stays until `17.5` is confirmed stable on arm64.
+
 ## 🛠️ Useful Commands
 
 ```bash

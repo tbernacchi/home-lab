@@ -1,0 +1,44 @@
+schedule: '*/5 * * * *'
+
+deschedulerPolicy:
+  profiles:
+    - name: default
+      pluginConfig:
+        - name: DefaultEvictor
+          args:
+            podProtections:
+              defaultDisabled:
+                - PodsWithLocalStorage
+              extraEnabled:
+                - PodsWithPVC
+        - name: RemoveDuplicates
+        - name: RemovePodsHavingTooManyRestarts
+          args:
+            includingInitContainers: true
+            podRestartThreshold: 100
+        - name: LowNodeUtilization
+          args:
+            thresholds:
+              cpu: 30
+              memory: 30
+              pods: 30
+            targetThresholds:
+              cpu: 50
+              memory: 50
+              pods: 50
+      plugins:
+        balance:
+          enabled:
+            - LowNodeUtilization
+        deschedule:
+          enabled:
+            - RemovePodsHavingTooManyRestarts
+        filter:
+          enabled:
+            - DefaultEvictor
+        preEvictionFilter:
+          enabled:
+            - DefaultEvictor
+        sort:
+          enabled:
+            - DefaultEvictor

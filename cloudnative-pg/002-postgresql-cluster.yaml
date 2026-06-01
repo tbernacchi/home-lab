@@ -5,7 +5,8 @@ metadata:
   namespace: postgres
 spec:
   instances: 3
-  
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
   storage:
     size: 10Gi
     storageClass: cnpg-storage
