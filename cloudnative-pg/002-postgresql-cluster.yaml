@@ -26,6 +26,16 @@ spec:
       min_wal_size: "1GB"
       max_wal_size: "4GB"
       
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - raspberrypi4-5
+
   # Prometheus monitoring
   monitoring:
     enablePodMonitor: true
