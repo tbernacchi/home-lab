@@ -257,6 +257,71 @@ Kyverno will re-register the webhooks once its pod is healthy.
 
 ---
 
+### General pattern: pods on master with stale Cilium state
+
+After migration, any pod running on the master that was alive during the k3s restart will have stale Cilium eBPF state. Symptoms vary but root cause is the same: the pod cannot reach other IPs (API server, other pods, its own pod IP) because the eBPF maps were invalidated by the k3s restart and never flushed.
+
+**Affected pods (observed):** Prometheus, local-path-provisioner, metrics-server, CNPG replica.
+
+**Fix pattern:**
+```bash
+# 1. restart Cilium on master to flush stale eBPF maps
+kubectl delete pod -n kube-system $(kubectl get pod -n kube-system -l k8s-app=cilium -o wide | grep raspberrypi4-5 | awk '{print $1}')
+
+# 2. restart each affected pod so it comes up after Cilium is clean
+kubectl rollout restart deployment/<affected-deployment> -n <namespace>
+# or for StatefulSet: delete the pod
+kubectl delete pod <statefulset-pod> -n <namespace>
+```
+
+**Long-term fix:** move stateful or control-plane-sensitive workloads off the master entirely (nodeSelector or nodeAffinity). The master should run only kine/apiserver/scheduler/controller-manager. Any workload competing for I/O or making frequent API calls will be affected during kine compaction bursts.
+
+---
+
+### metrics-server crash loop (no route to host on port 10250)
+
+**Symptom:** metrics-server repeatedly fails readiness/liveness probes:
+```
+Readiness probe failed: Get "https://10.42.x.x:10250/readyz": dial tcp: connect: no route to host
+```
+
+**Cause:** metrics-server connects to kubelet on each node via port 10250. If Cilium eBPF state is stale on any node, those connections are silently dropped — same root cause as the 504 ingress issue.
+
+**Fix:**
+```bash
+# 1. restart Cilium on master to flush stale eBPF state
+MASTER_CILIUM=$(kubectl get pod -n kube-system -l k8s-app=cilium -o wide | grep raspberrypi4-5 | awk '{print $1}')
+kubectl delete pod -n kube-system $MASTER_CILIUM
+
+# 2. restart metrics-server to clear backoff state
+kubectl rollout restart deployment/metrics-server -n kube-system
+
+# 3. verify
+kubectl top nodes
+```
+
+---
+
+### Stale Traefik HelmChart CRs causing looping helm-install jobs
+
+**Symptom:** `helm-install-traefik` and `helm-install-traefik-crd` jobs keep restarting in `kube-system`, failing with `secret "chart-values-traefik" not found` or `configmap "chart-content-traefik" not found`.
+
+**Cause:** the imported `state.db` contains K3s built-in HelmChart CRs for Traefik from before `--disable traefik` was configured. K3s HelmChart controller watches these CRs and continuously spawns new install jobs.
+
+**Fix:** delete the HelmChart CRs — the controller stops spawning jobs immediately:
+```bash
+kubectl delete helmchart traefik traefik-crd -n kube-system --ignore-not-found
+kubectl get job -n kube-system | grep traefik | awk '{print $1}' | xargs kubectl delete job -n kube-system --ignore-not-found
+```
+
+Confirm:
+```bash
+kubectl get helmchart,job -n kube-system | grep traefik
+# should return nothing
+```
+
+---
+
 ## Rollback
 
 If k3s fails to start after the migration:
