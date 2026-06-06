@@ -8,9 +8,19 @@ affinity:
               values:
                 - instance-20260606-1317
 
+api:
+  dashboard: true
+  insecure: false
+
 ports:
   web:
     port: 80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
     forwardedHeaders:
       trustedIPs:
         - 173.245.48.0/20
@@ -28,8 +38,6 @@ ports:
         - 104.24.0.0/14
         - 172.64.0.0/13
         - 131.0.72.0/22
-        - 192.168.1.130/32
-        - 10.0.0.145/32
     proxyProtocol:
       trustedIPs:
         - 173.245.48.0/20
@@ -47,13 +55,8 @@ ports:
         - 104.24.0.0/14
         - 172.64.0.0/13
         - 131.0.72.0/22
-        - 192.168.1.130
-        - 10.0.0.145/32
   websecure:
     port: 443
-    tls:
-      enabled: true
-      options: default
     forwardedHeaders:
       trustedIPs:
         - 173.245.48.0/20
@@ -71,8 +74,6 @@ ports:
         - 104.24.0.0/14
         - 172.64.0.0/13
         - 131.0.72.0/22
-        - 192.168.1.130/32
-        - 10.0.0.145/32
     proxyProtocol:
       trustedIPs:
         - 173.245.48.0/20
@@ -90,8 +91,6 @@ ports:
         - 104.24.0.0/14
         - 172.64.0.0/13
         - 131.0.72.0/22
-        - 192.168.1.130
-        - 10.0.0.145/32
   metrics:
     port: 8899
     expose:
@@ -99,28 +98,27 @@ ports:
     exposedPort: 8899
     protocol: TCP
 
-dashboard:
-  enabled: true
-  domain: "traefik.mykubernetes.com"
-
 metrics:
   prometheus:
     entryPoint: metrics
     addEntryPointsLabels: true
     addServicesLabels: true
-    buckets: "0.100000, 0.300000, 1.200000, 5.000000"
+    buckets: "0.1,0.3,1.2,5.0"
     service:
       enabled: true
     serviceMonitor:
       enabled: false
 
 logs:
+  general:
+    level: INFO
   access:
     enabled: true
     fields:
-      defaultMode: keep
+      general:
+        defaultmode: keep
       headers:
-        defaultMode: drop
+        defaultmode: drop
         names:
           X-Real-IP: keep
           X-Forwarded-For: keep
@@ -130,6 +128,13 @@ logs:
           CF-Region: keep
           CF-Latitude: keep
           CF-Longitude: keep
+
+tracing:
+  otlp:
+    enabled: true
+    http:
+      enabled: true
+      endpoint: http://tempo.monitoring.svc:4318/v1/traces
 
 providers:
   kubernetesCRD:
@@ -155,17 +160,3 @@ gateway:
       protocol: HTTP
       namespacePolicy:
         from: All
-
-additionalArguments:
-  - "--api.dashboard=true"
-  - "--api.insecure=false"
-  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-  - "--log.level=DEBUG"
-  - "--serversTransport.insecureSkipVerify=false"
-  - "--tracing.otlp=true"
-  - "--tracing.otlp.http=true"
-  - "--tracing.otlp.http.endpoint=http://tempo.monitoring.svc:4318/v1/traces"
-
-globalArguments:
-  - "--global.checknewversion=false"
-  - "--global.sendanonymoususage=false"

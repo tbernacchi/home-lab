@@ -219,6 +219,16 @@ kubectl create -f monitoring/ingressroute.yaml
 
 ## Traefik
 
+Gateway API CRDs must be installed before Traefik (chart no longer ships them):
+
+```bash
+# initially installed
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+
+# upgrade to latest
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+```
+
 ```bash
 kubectl create namespace traefik
 helm repo add traefik https://traefik.github.io/charts

@@ -11,6 +11,17 @@ Traefik v3 deployed via Helm chart `traefik/traefik` (chart 38.0.1, app v3.6.5) 
 | `helmchartconfig.yaml` | K3s HelmChartConfig — enables Prometheus metrics on port 8899 |
 | `dashboard.yaml` | IngressRoute for the Traefik dashboard |
 
+## Clear stale ExternalIPs
+
+After disabling K3s servicelb, the LoadBalancer service retains the old node IPs in `status.loadBalancer`. Clear them manually:
+
+```bash
+kubectl patch svc traefik -n traefik --subresource=status --type=json \
+  -p='[{"op":"replace","path":"/status/loadBalancer","value":{"ingress":[]}}]'
+```
+
+Service shows `<pending>` until a LoadBalancer controller (e.g. Cilium L2) assigns a proper IP.
+
 ## Helm install
 
 ```bash
