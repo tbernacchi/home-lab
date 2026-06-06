@@ -26,4 +26,12 @@ loadBalancer:
   mode: dsr
 operator:
   replicas: 1
+  prometheus:
+    enabled: true
+    port: 9963
+    serviceMonitor:
+      enabled: false
+prometheus:
+  enabled: true
+  port: 9962
 routingMode: native
