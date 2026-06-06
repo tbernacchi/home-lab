@@ -98,11 +98,35 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule- 2>/d
 kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule- 2>/dev/null || true
 ```
 
-### 8. Firewall — allow Tailscale traffic
+### 8. Firewall — flush iptables (OCI default has REJECT rule that blocks VXLAN/Tailscale)
+
+OCI Ubuntu instances come with a restrictive iptables config that rejects all traffic not explicitly allowed. This blocks Cilium VXLAN (UDP 8472) and other cluster traffic. Flush everything and set ACCEPT policy:
 
 ```bash
-sudo iptables -I INPUT -i tailscale0 -j ACCEPT
-sudo iptables -I INPUT -i tailscale0 -p tcp --dport 6443 -j ACCEPT
+cat > /root/iptables.sh << 'EOF'
+#!/bin/bash
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -F
+iptables -X
+iptables -Z
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+iptables -t raw -F
+iptables -t raw -X
+EOF
+chmod +x /root/iptables.sh
+sudo /root/iptables.sh
+```
+
+Persiste pra sobreviver reboot:
+
+```bash
+sudo apt install iptables-persistent -y
+sudo netfilter-persistent save
 ```
 
 ### 9. Install Cilium (VXLAN tunnel — required for cross-network)

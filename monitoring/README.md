@@ -27,11 +27,15 @@ helm repo update
 ### 3. Install kube-prometheus-stack
 
 ```bash
-helm install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --version 72.3.0 \
+helm upgrade --install my-kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
-  --values values.yaml
+  --timeout 10m \
+  --set prometheusOperator.admissionWebhooks.enabled=false \
+  --set prometheusOperator.admissionWebhooks.patch.enabled=false \
+  -f monitoring/values.yaml
 ```
+
+**Why `admissionWebhooks.enabled=false`:** the `admission-create` job spawns a pod that generates TLS certs for webhook validation. With Tailscale + VXLAN networking, this job hits `BackoffLimitExceeded` (timing/connectivity issue during pod startup). Disabling is safe for home lab — PrometheusRule validation errors fail silently instead of being rejected at admission.
 
 ### 4. Wait for the stack to be ready
 

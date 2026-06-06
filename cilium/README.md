@@ -100,6 +100,149 @@ done
 
 ---
 
+### Cilium config change doesn't restart pods (ConfigMap-only changes)
+
+`helm upgrade` with settings that only change the `cilium-config` ConfigMap (e.g. `devices`, `tunnel`) does NOT automatically restart Cilium pods. Restart manually **one pod at a time** — never all at once with `rollout restart`.
+
+```bash
+# Get pod names
+kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+
+# Restart one at a time — wait for Running before next
+kubectl delete pod <cilium-pod> -n kube-system
+kubectl get pods -n kube-system -l k8s-app=cilium -w
+# repeat for each pod
+```
+
+**Why one at a time:** with `kubeProxyReplacement=true`, restarting all Cilium pods simultaneously drops networking on all nodes at once. See golden rule #11.
+
+---
+
+### Pods can't reach external IPs or API server (wrong Cilium device)
+
+**Symptom:** pods get `connection timed out` to any external IP (1.1.1.1, OCI master, etc.). Host-level connectivity works fine.
+
+**Cause:** when `--node-ip` is a Tailscale IP (100.x.x.x), Cilium auto-detects `tailscale0` as the primary device and attaches BPF programs there. `tailscale0` only routes Tailscale IPs — external traffic is dropped.
+
+**Fix:** force Cilium to use `eth0`:
+
+```bash
+helm upgrade cilium cilium/cilium --version v1.17.5 \
+  --namespace kube-system \
+  --reuse-values \
+  --set devices=eth0
+```
+
+Then restart Cilium pods one at a time (see above).
+
+---
+
+## Cilium + Tailscale (OCI master + Pi workers)
+
+When the k3s master runs on OCI (cloud) and workers are Raspberry Pi nodes connected via Tailscale, Cilium must use **native routing mode** with Tailscale subnet routing. VXLAN over Tailscale causes masquerade issues (pods can't reach external IPs or the API server).
+
+### Why VXLAN fails over Tailscale
+
+With VXLAN + Tailscale, Cilium's eBPF masquerade uses `eth0`'s LAN IP (192.168.1.x) as source for pod traffic. Packets route via `tailscale0` to OCI, but OCI can't route responses back to 192.168.1.x (not in Tailscale network) → timeout.
+
+### Architecture (native routing)
+
+- Cilium: native routing mode, no VXLAN
+- Each node advertises its pod CIDR via Tailscale
+- Cilium adds host routes: `10.42.x.0/24 → Tailscale IP of that node`
+- Pod-to-pod traffic goes via Tailscale directly, no masquerade
+- External traffic (internet) goes via eth0/ens3 with correct SNAT
+
+### Node pod CIDRs
+
+| Node | Tailscale IP | Pod CIDR |
+|---|---|---|
+| OCI master | `<OCI_TS_IP>` | `10.42.0.0/24` |
+| raspberrypi4-1 | `<TS_IP_PI1>` | `10.42.1.0/24` |
+| raspberrypi4-3 | `<TS_IP_PI3>` | `10.42.2.0/24` |
+| raspberrypi4-5 | `<TS_IP_PI5>` | `10.42.3.0/24` |
+| raspberrypi4-4 | `<TS_IP_PI4>` | `10.42.4.0/24` |
+
+Pod CIDRs are assigned by Cilium IPAM on first join — they don't change unless the node is deleted and rejoins.
+
+### Step 1 — Enable IP forwarding (all nodes)
+
+```bash
+sudo sysctl -w net.ipv6.conf.all.forwarding=1
+echo "net.ipv6.conf.all.forwarding=1" | sudo tee -a /etc/sysctl.d/99-k3s.conf
+sudo ethtool -K eth0 rx-udp-gro-forwarding on 2>/dev/null || true  # Pi workers only
+```
+
+### Step 2 — Advertise pod CIDR via Tailscale (each node)
+
+```bash
+# OCI master
+sudo tailscale up --advertise-routes=10.42.0.0/24 --accept-routes
+
+# raspberrypi4-1
+sudo tailscale up --advertise-routes=10.42.1.0/24 --accept-routes
+
+# raspberrypi4-3
+sudo tailscale up --advertise-routes=10.42.2.0/24 --accept-routes
+
+# raspberrypi4-4
+sudo tailscale up --advertise-routes=10.42.4.0/24 --accept-routes
+
+# raspberrypi4-5
+sudo tailscale up --advertise-routes=10.42.3.0/24 --accept-routes
+```
+
+### Step 3 — Approve routes in Tailscale admin
+
+Go to admin.tailscale.com → each machine → Edit route settings → approve the subnet route.
+
+Auto-approval logs appear as: `Update auto approved routes for node ...`
+
+### Step 4 — Verify routes propagated
+
+```bash
+tailscale status --json | python3 -m json.tool | grep -A3 "PrimaryRoutes"
+# each peer should show its 10.42.x.0/24 in PrimaryRoutes
+```
+
+### Step 5 — Upgrade Cilium to native routing
+
+OCI master uses `ens3`, Pi workers use `eth0`. Pass both so Cilium picks the correct one per node:
+
+```bash
+helm upgrade cilium cilium/cilium --version v1.17.5 \
+  --namespace kube-system \
+  --reuse-values \
+  --set tunnelProtocol="" \
+  --set routingMode=native \
+  --set ipv4NativeRoutingCIDR=10.42.0.0/16 \
+  --set autoDirectNodeRoutes=true \
+  --set 'devices={eth0,ens3}'
+```
+
+### Step 6 — Restart Cilium pods one at a time
+
+```bash
+kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+kubectl delete pod <cilium-pod> -n kube-system
+# wait for Running, then next pod
+```
+
+### Verify
+
+```bash
+# Routes via Tailscale (not cilium_host) after restart
+ip route show | grep 10.42
+
+# Pod connectivity test
+kubectl run nettest --image=busybox --rm -it --restart=Never -- nc -zv <OCI_TS_IP> 6443
+
+# External connectivity
+kubectl run nettest --image=busybox --rm -it --restart=Never -- wget -qO- http://1.1.1.1 --timeout=5
+```
+
+---
+
 ## Enable hubble flowVisibility
 
 ```
