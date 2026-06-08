@@ -27,6 +27,29 @@ helm upgrade --install descheduler descheduler/descheduler \
 
 Narrow window (30%→50%) = more frequent rebalancing, uniform load across nodes.
 
+## Zero-downtime eviction
+
+The descheduler evicts pods but does not move them — the scheduler reschedules them on a better node. During eviction, the pod is terminated briefly.
+
+To avoid downtime during rebalancing:
+1. Run at least **2 replicas** on the deployment.
+2. Add a `PodDisruptionBudget` with `minAvailable: 1`.
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapp-pdb
+  namespace: mynamespace
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: myapp
+```
+
+Single-replica workloads (Grafana, Alertmanager, etc.) will always have a brief downtime during eviction. Acceptable in a homelab context.
+
 ## Upgrade
 
 ```bash

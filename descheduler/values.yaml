@@ -29,6 +29,7 @@ deschedulerPolicy:
       plugins:
         balance:
           enabled:
+            - RemoveDuplicates
             - LowNodeUtilization
         deschedule:
           enabled:
