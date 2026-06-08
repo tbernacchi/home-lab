@@ -78,7 +78,7 @@ providers:
 ## Prometheus address
 
 ```
-http://prometheus-stack-kube-prom-prometheus.monitoring.svc.cluster.local:9090/prometheus
+http://my-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/prometheus
 ```
 
 Route-prefix `/prometheus` set via `--web.route-prefix=/prometheus` in kube-prometheus-stack values.

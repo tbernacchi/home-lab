@@ -3,6 +3,7 @@ prometheus:
   prometheusSpec:
     externalUrl: https://traefik.mykubernetes.com/prometheus  # Do patch
     routePrefix: /prometheus  # Do patch
+    enableRemoteWriteReceiver: true
     resources:
       requests:
         memory: "512Mi"

@@ -257,3 +257,41 @@ kubectl run nettest --image=busybox --rm -it --restart=Never -- wget -qO- http:/
 cilium config view | grep "enable-gateway-api"
 ```
 
+---
+
+## OCI master + Tailscale cluster (2026-06 rebuild)
+
+When control-plane moved from `raspberrypi4-5` (192.168.1.106) to OCI (`instance-20260606-1317`, Tailscale IP `100.95.112.47`), three issues surfaced.
+
+### 1. `k8sServiceHost` must use Tailscale IP
+
+`cilium-values.yaml` had `k8sServiceHost: 192.168.1.106` (old Pi master). Pi worker Cilium pods tried to reach the API server on a dead IP → `Init:CrashLoopBackOff`.
+
+**Fix:** update to OCI Tailscale IP:
+```yaml
+k8sServiceHost: 100.95.112.47
+k8sServicePort: 6443
+```
+
+### 2. `loadBalancer.mode: dsr` incompatible with Tailscale transport
+
+Pi nodes use `tailscale0` as INTERNAL-IP (`--node-ip 100.x.x.x`). DSR requires IPIP encapsulation between nodes — Tailscale does not forward raw IPIP packets, so return traffic from backend pods never reached the client.
+
+**Symptom:** `telnet 192.168.1.130 443` → `Operation timed out` (ARP worked, TCP SYN dropped).
+
+**Fix:**
+```yaml
+loadBalancer:
+  mode: snat
+```
+
+### 3. L2 announcements must be applied via `helm upgrade`
+
+`l2announcements.enabled: true` in `cilium-values.yaml` only takes effect after `helm upgrade --reuse-values -f cilium-values.yaml`. The ConfigMap `cilium-config` must contain `enable-l2-announcements: "true"` — verify with:
+
+```bash
+kubectl -n kube-system get configmap cilium-config -o yaml | grep l2-announce
+```
+
+Without this, `CiliumLoadBalancerIPPool` assigns the IP but no ARP is broadcast → `No route to host`.
+

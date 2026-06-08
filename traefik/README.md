@@ -126,6 +126,16 @@ spec:
     secretName: traefik-cert
 ```
 
+## Troubleshooting
+
+### Chrome `ERR_ADDRESS_UNREACHABLE` — curl works, browser doesn't
+
+**Cause:** Chrome attempts QUIC (HTTP/3 over UDP) before falling back to TCP. Cilium L2 announcement handles TCP via BPF, but UDP/QUIC is not handled the same way — Chrome gets no response and reports `ERR_ADDRESS_UNREACHABLE`.
+
+**Fix:** use Firefox or Safari. Or disable QUIC in Chrome: `chrome://flags/#enable-quic` → Disabled.
+
+curl is not affected because it uses TCP by default.
+
 ## Trusted IPs
 
 `forwardedHeaders.trustedIPs` and `proxyProtocol.trustedIPs` include:

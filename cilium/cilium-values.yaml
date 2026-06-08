@@ -14,7 +14,7 @@ ipv4NativeRoutingCIDR: 10.42.0.0/16
 k8sClientRateLimit:
   burst: 100
   qps: 50
-k8sServiceHost: 192.168.1.106
+k8sServiceHost: 100.95.112.47
 k8sServicePort: 6443
 kubeProxyReplacement: true
 l2announcements:
@@ -23,7 +23,7 @@ l2announcements:
   leaseRenewDeadline: 1s
   leaseRetryPeriod: 200ms
 loadBalancer:
-  mode: dsr
+  mode: snat
 operator:
   replicas: 1
   prometheus:
