@@ -58,6 +58,19 @@ grafana:
   #   kubectl get configmap prometheus-stack-grafana -n monitoring -o json | \
   #     python3 -c "..." | kubectl apply -f -
   # Ver README.md para o comando completo.
+  additionalDataSources:
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo.monitoring.svc:3200
+      access: proxy
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: prometheus
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
   grafana.ini:
     server:
       domain: traefik.mykubernetes.com
