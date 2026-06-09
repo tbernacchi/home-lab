@@ -1,0 +1,13 @@
+---
+- name: Remove flannel CNI conflist from k3s workers
+  hosts: k3s_workers
+  tasks:
+    - name: Remove flannel conflist
+      file:
+        path: /var/lib/rancher/k3s/agent/etc/cni/net.d/10-flannel.conflist
+        state: absent
+
+    - name: Restart k3s-agent
+      systemd:
+        name: k3s-agent
+        state: restarted

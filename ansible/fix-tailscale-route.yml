@@ -1,0 +1,30 @@
+---
+# Adds 100.64.0.0/10 (Tailscale CGNAT) to the main routing table on all Pi nodes.
+# Required so Cilium can install direct node routes via Tailscale IPs (autoDirectNodeRoutes).
+# Root cause: unattended-upgrades updated systemd-resolved, which caused a network
+# reconfiguration that removed Tailscale routes from the main table (2026-06-09).
+- name: Fix Tailscale CGNAT route for Cilium native routing
+  hosts: k3s_nodes
+  become: true
+
+  tasks:
+    - name: Add Tailscale CGNAT route to main routing table
+      command: ip route add 100.64.0.0/10 dev tailscale0
+      register: route_result
+      ignore_errors: true
+      changed_when: route_result.rc == 0
+
+    - name: Persist Tailscale route via systemd-networkd
+      copy:
+        dest: /etc/systemd/network/10-tailscale-route.network
+        content: |
+          [Match]
+          Name=tailscale0
+
+          [Route]
+          Destination=100.64.0.0/10
+      notify: reload networkctl
+
+  handlers:
+    - name: reload networkctl
+      command: networkctl reload
