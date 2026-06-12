@@ -1,0 +1,79 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-alerts
+  namespace: monitoring
+  labels:
+    release: my-kube-prometheus-stack
+spec:
+  groups:
+    - name: homelab.node
+      interval: 1m
+      rules:
+        - alert: NodeRebooted
+          expr: changes(node_boot_time_seconds[15m]) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} rebooted"
+            description: "{{ $labels.instance }} boot time changed in last 15m — unexpected reboot."
+
+        - alert: NodeMemoryPressure
+          expr: |
+            (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory > 85%"
+            description: "{{ $labels.instance }} memory usage {{ $value | humanizePercentage }}."
+
+        - alert: NodeMemoryCritical
+          expr: |
+            (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.95
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} memory > 95%"
+            description: "{{ $labels.instance }} near OOM. May trigger reboot."
+
+        - alert: NodeCPUSustained
+          expr: |
+            (1 - avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU > 85% for 10m"
+            description: "{{ $labels.instance }} CPU {{ $value | humanizePercentage }}."
+
+    - name: homelab.cilium
+      interval: 1m
+      rules:
+        - alert: CiliumPodRestarting
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="kube-system",
+              container="cilium-agent"
+            }[30m]) > 2
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cilium pod {{ $labels.pod }} restarting"
+            description: "{{ $labels.pod }} restarted >2x in 30m. L2 announcements may break after restart."
+
+        - alert: CiliumL2LeasePotentiallyStale
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="kube-system",
+              container="cilium-agent"
+            }[10m]) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cilium restarted on {{ $labels.pod }} — check L2 lease"
+            description: |
+              Cilium restarted. If this pod holds a L2 announce lease, gratuitous ARP may not re-fire.
+              Fix: kubectl delete lease -n kube-system $(kubectl get lease -n kube-system | grep cilium-l2announce | awk '{print $1}')

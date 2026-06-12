@@ -36,6 +36,15 @@ alertmanager:
   alertmanagerSpec:
     externalUrl: https://traefik.mykubernetes.com/alertmanager  # Do patch
     routePrefix: /alertmanager  # Do patch
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values:
+                    - raspberrypi4-5
     resources:
       requests:
         memory: "256Mi"
@@ -87,6 +96,15 @@ grafana:
       domain: traefik.mykubernetes.com
       root_url: https://traefik.mykubernetes.com/grafana  # URL absoluta — relativo (/grafana) nao funciona
       serve_from_sub_path: true
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - raspberrypi4-5
   resources:
     requests:
       memory: "256Mi"
