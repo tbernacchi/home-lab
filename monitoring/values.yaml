@@ -36,6 +36,10 @@ alertmanager:
   alertmanagerSpec:
     externalUrl: https://traefik.mykubernetes.com/alertmanager  # Do patch
     routePrefix: /alertmanager  # Do patch
+    alertmanagerConfigSelector:
+      matchLabels:
+        alertmanagerConfig: homelab
+    alertmanagerConfigNamespaceSelector: {}
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:

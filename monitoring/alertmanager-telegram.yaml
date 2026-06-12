@@ -1,0 +1,39 @@
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: homelab-telegram
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: homelab
+spec:
+  route:
+    receiver: telegram
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: alertname
+        matchType: =~
+        value: "NodeRebooted|NodeMemoryPressure|NodeMemoryCritical|NodeCPUSustained|CiliumPodRestarting|CiliumL2LeasePotentiallyStale"
+  receivers:
+    - name: telegram
+      telegramConfigs:
+        - botToken:
+            name: alertmanager-telegram
+            key: token
+          chatID: 6846637072
+          parseMode: HTML
+          message: |-
+            {{ range .Alerts }}{{ if eq .Labels.severity "critical" }}🔴{{ else }}🟡{{ end }} <b>{{ .Labels.alertname }}</b> [{{ .Labels.severity | toUpper }}]
+
+            📍 <b>Node:</b> {{ .Labels.instance }}{{ if .Labels.pod }} / {{ .Labels.pod }}{{ end }}
+            🗂 <b>Namespace:</b> {{ .Labels.namespace }}
+            🕐 <b>Disparou:</b> {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+
+            📋 <b>Resumo:</b> {{ .Annotations.summary }}
+
+            📝 <b>Detalhes:</b> {{ .Annotations.description }}
+            {{ end }}
+          disableNotifications: false
+          sendResolved: true
