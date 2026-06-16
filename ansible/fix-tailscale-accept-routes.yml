@@ -1,0 +1,18 @@
+---
+- name: Disable Tailscale accept-routes on Pi workers
+  hosts: k3s_workers
+  become: false
+  tasks:
+    - name: Disable accept-routes
+      command: sudo tailscale set --accept-routes=false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Verify
+      command: tailscale status --json
+      register: ts_status
+      changed_when: false
+
+    - name: Show accept-routes value
+      debug:
+        msg: "{{ inventory_hostname }}: acceptRoutes={{ (ts_status.stdout | from_json).Self.AcceptedRoutes | default('false') }}"

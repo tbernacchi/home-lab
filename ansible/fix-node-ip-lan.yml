@@ -1,0 +1,48 @@
+---
+# Fix: replace Tailscale node-ip with LAN IP in k3s-agent service.
+# Root cause: bpf_redirect_neigh() fails on tailscale0 (no L2 neighbors).
+# With LAN IPs, Cilium autoDirectNodeRoutes uses eth0 → ARP reachable → works.
+#
+# Run: ansible-playbook -i inventory/hosts.yml fix-node-ip-lan.yml --ask-become-pass
+- name: Fix k3s node-ip — Tailscale → LAN
+  hosts: k3s_workers
+  become: true
+  vars:
+    node_lan_ip:
+      raspberrypi4-1: "192.168.1.102"
+      raspberrypi4-3: "192.168.1.103"
+      raspberrypi4-4: "192.168.1.105"
+      raspberrypi4-5: "192.168.1.106"
+    node_tailscale_ip:
+      raspberrypi4-1: "100.73.163.8"
+      raspberrypi4-3: "100.64.99.68"
+      raspberrypi4-4: "100.111.45.83"
+      raspberrypi4-5: "100.77.224.110"
+
+  tasks:
+    - name: Replace Tailscale node-ip with LAN IP in k3s-agent.service
+      replace:
+        path: /etc/systemd/system/k3s-agent.service
+        regexp: "'{{ node_tailscale_ip[inventory_hostname] }}'"
+        replace: "'{{ node_lan_ip[inventory_hostname] }}'"
+      register: service_changed
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: true
+      when: service_changed.changed
+
+    - name: Restart k3s-agent
+      systemd:
+        name: k3s-agent
+        state: restarted
+      when: service_changed.changed
+
+    - name: Verify new node-ip in service file
+      shell: grep -A1 "node-ip" /etc/systemd/system/k3s-agent.service | tail -1
+      register: result
+      changed_when: false
+
+    - name: Show node-ip
+      debug:
+        msg: "{{ inventory_hostname }}: node-ip = {{ result.stdout | trim }}"
