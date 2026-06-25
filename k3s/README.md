@@ -2,36 +2,41 @@
 
 K3s built-in component customization via `HelmChartConfig` CRDs.
 
-## CoreDNS
+## Root cause: Pi workers cannot reach OCI pod IPs
+
+OCI master has no LAN IP — Pi workers reach it via Tailscale only.
+Pi workers run with `--accept-routes=false` (required to fix `bpf_redirect_neigh` crash on `tailscale0`).
+
+Without `--accept-routes`, Tailscale on Pi workers drops packets destined for OCI pod CIDR (`10.42.0.0/24`).
+Any k3s component scheduled on OCI that Pi pods need to reach will be silently unreachable.
+
+**Affected components by default:** CoreDNS, metrics-server.
+
+**Symptom check:**
+```bash
+# From any Pi pod — should resolve, not timeout:
+kubectl exec -n monitoring <pod> -c <container> -- nslookup kubernetes.default.svc.cluster.local
+
+# Should show metrics for all Pi nodes, not <unknown>:
+kubectl top nodes
+```
+
+---
+
+## CoreDNS — pinned to raspberrypi4-1
 
 K3s manages CoreDNS internally. To customize it, use `HelmChartConfig` instead of editing the Deployment directly.
 
-### Pin CoreDNS to master node
+**Why:** CoreDNS defaults to OCI. Pi pods query `10.43.0.10` (kube-dns ClusterIP) → Cilium translates to `10.42.0.226` (CoreDNS pod on OCI) → packet enters `tailscale0` → Tailscale drops it (no accepted subnet routes). All DNS from Pi pods times out.
 
-**Permanent (auto-applied on boot):**
+**Fix:**
 ```bash
-sudo cp coredns-helmchartconfig.yaml /var/lib/rancher/k3s/server/manifests/
+kubectl apply -f k3s/coredns-helmchartconfig.yaml
 ```
 
-**Manual apply:**
-```bash
-kubectl apply -f coredns-helmchartconfig.yaml
-```
+File: [`coredns-helmchartconfig.yaml`](coredns-helmchartconfig.yaml)
 
-**Why:** worker nodes with Cilium instability cause CoreDNS readiness probes to fail (kubelet can't reach pod IP when Cilium endpoint is not yet created). Pinning to the master ensures DNS is always available.
-
-**Important:** the master has TWO taints — both must be tolerated:
-```
-node-role.kubernetes.io/control-plane:NoSchedule
-node-role.kubernetes.io/master:NoSchedule
-```
-
-Check all taints on master:
-```bash
-kubectl get node raspberrypi4-5 -o jsonpath='{.spec.taints}' | jq
-```
-
-### Troubleshooting — CoreDNS stuck Pending after pinning to master
+### Troubleshooting — CoreDNS stuck Pending after pinning
 
 If CoreDNS stays Pending with `untolerated taint(s)`, patch tolerations directly:
 
@@ -56,6 +61,23 @@ If `topologySpreadConstraints` conflict with single-node scheduling:
 ```bash
 kubectl patch deployment coredns -n kube-system --type=strategic -p '{"spec":{"template":{"spec":{"topologySpreadConstraints":null}}}}'
 ```
+
+## metrics-server — pinned to raspberrypi4-1
+
+**Why:** metrics-server defaults to OCI. Scrapes kubelet on each node's `InternalIP`. Pi nodes register with LAN IPs (`192.168.1.x`) — unreachable from OCI. All Pi nodes show `<unknown>` in `kubectl top nodes`.
+
+metrics-server is a k3s **Addon** (not a HelmChart), so `HelmChartConfig` has no effect.
+The Addon controller reconciles only on k3s startup — patch survives reboots, but re-apply after k3s reinstall.
+
+**Fix:**
+```bash
+kubectl patch deployment metrics-server -n kube-system \
+  --type strategic --patch-file k3s/metrics-server-patch.yaml
+```
+
+File: [`metrics-server-patch.yaml`](metrics-server-patch.yaml)
+
+---
 
 ## Disable built-in servicelb (klipper)
 
