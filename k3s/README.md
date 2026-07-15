@@ -23,51 +23,38 @@ kubectl top nodes
 
 ---
 
-## CoreDNS — pinned to raspberrypi4-1
+## CoreDNS — must avoid OCI master, any Pi worker OK
 
-K3s manages CoreDNS internally. To customize it, use `HelmChartConfig` instead of editing the Deployment directly.
+**Why:** CoreDNS must never run on OCI. Pi pods query `10.43.0.10` (kube-dns ClusterIP) → Cilium translates to the CoreDNS pod IP → if that pod is on OCI, the packet enters `tailscale0` → Tailscale drops it (Pi workers run `--accept-routes=false`, no route to OCI pod CIDR). All DNS from Pi pods times out.
 
-**Why:** CoreDNS defaults to OCI. Pi pods query `10.43.0.10` (kube-dns ClusterIP) → Cilium translates to `10.42.0.226` (CoreDNS pod on OCI) → packet enters `tailscale0` → Tailscale drops it (no accepted subnet routes). All DNS from Pi pods times out.
+Previously hard-pinned to a single node (`kubernetes.io/hostname: raspberrypi4-1`) via `nodeSelector`. **This was a single point of failure** — 2026-07-14 outage: pi4-1 died, CoreDNS/metrics-server stuck `Pending` forever (nodeSelector only allows that one node — default eviction/reschedule can't save it, unlike normal deployments which just move to any Ready node within ~5min).
 
-**Fix:**
-```bash
-kubectl apply -f k3s/coredns-helmchartconfig.yaml
-```
+**Current fix:** no node pinned by name. Required anti-affinity excludes only the OCI master (`instance-20260606-1317`) by hostname; scheduler is free to place on whichever Pi worker is Ready. Node dies → default eviction (~5min) → reschedules on any other Ready Pi worker automatically.
 
-File: [`coredns-helmchartconfig.yaml`](coredns-helmchartconfig.yaml)
-
-### Troubleshooting — CoreDNS stuck Pending after pinning
-
-If CoreDNS stays Pending with `untolerated taint(s)`, patch tolerations directly:
+Note: CoreDNS is a k3s **Addon**, not a live `HelmChart` (no `helmchart.helm.cattle.io` resource exists once cluster is running) — `HelmChartConfig` alone has **no effect on an already-running cluster**, only consumed by the addon controller at k3s startup. Keep it in sync for that case, but the live fix needs a direct Deployment patch:
 
 ```bash
-kubectl patch deployment coredns -n kube-system --type=strategic -p '{
-  "spec": {
-    "template": {
-      "spec": {
-        "tolerations": [
-          {"key": "node-role.kubernetes.io/control-plane", "operator": "Exists", "effect": "NoSchedule"},
-          {"key": "node-role.kubernetes.io/master",        "operator": "Exists", "effect": "NoSchedule"},
-          {"key": "node.kubernetes.io/not-ready",          "operator": "Exists", "effect": "NoExecute"},
-          {"key": "node.kubernetes.io/unreachable",        "operator": "Exists", "effect": "NoExecute"}
-        ]
-      }
-    }
-  }
-}'
+kubectl apply -f k3s/coredns-helmchartconfig.yaml   # for next k3s startup/reinstall
+kubectl patch deployment coredns -n kube-system \
+  --type strategic --patch-file k3s/coredns-patch.yaml   # live cluster now
 ```
 
-If `topologySpreadConstraints` conflict with single-node scheduling:
+Files: [`coredns-helmchartconfig.yaml`](coredns-helmchartconfig.yaml), [`coredns-patch.yaml`](coredns-patch.yaml)
+
+**Gotcha:** OCI master has **no taints** in this cluster — dropping the `control-plane:NoSchedule` toleration is not enough to keep pods off it (confirmed empty on `kubectl get node instance-20260606-1317 -o jsonpath='{.spec.taints}'`). Must exclude it explicitly via `nodeAffinity` `NotIn` hostname, or it becomes schedulable like any worker.
+
+If `topologySpreadConstraints` conflict with scheduling:
 ```bash
 kubectl patch deployment coredns -n kube-system --type=strategic -p '{"spec":{"template":{"spec":{"topologySpreadConstraints":null}}}}'
 ```
 
-## metrics-server — pinned to raspberrypi4-1
+## metrics-server — same fix as CoreDNS
 
-**Why:** metrics-server defaults to OCI. Scrapes kubelet on each node's `InternalIP`. Pi nodes register with LAN IPs (`192.168.1.x`) — unreachable from OCI. All Pi nodes show `<unknown>` in `kubectl top nodes`.
+**Why:** metrics-server scrapes kubelet on each node's `InternalIP`. Pi nodes register with LAN IPs (`192.168.1.x`) — unreachable from OCI. If metrics-server itself runs on OCI, `kubectl top nodes` shows `<unknown>` for every Pi node.
 
-metrics-server is a k3s **Addon** (not a HelmChart), so `HelmChartConfig` has no effect.
-The Addon controller reconciles only on k3s startup — patch survives reboots, but re-apply after k3s reinstall.
+Same history and same live fix as CoreDNS above: was pinned to `raspberrypi4-1` by name, now uses `nodeAffinity` excluding only the OCI master, free to land on any Pi worker.
+
+metrics-server is a k3s **Addon** (not a HelmChart), so `HelmChartConfig` has no effect at all — always patch the Deployment directly. The Addon controller reconciles only on k3s startup — patch survives reboots, but re-apply after k3s reinstall.
 
 **Fix:**
 ```bash
