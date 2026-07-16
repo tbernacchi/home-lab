@@ -49,6 +49,14 @@ spec:
             summary: "Node {{ $labels.instance }} CPU > 85% for 10m"
             description: "{{ $labels.instance }} CPU {{ $value | humanizePercentage }}."
 
+        - alert: NodeUndervoltage
+          expr: node_hwmon_in_lcrit_alarm_volts{chip="soc:firmware_raspberrypi_hwmon"} > 0
+          labels:
+            severity: critical
+          annotations:
+            summary: "Undervoltage detected on {{ $labels.instance }}"
+            description: "Pi firmware reported under-voltage on {{ $labels.instance }} — bad PSU/cable, node may brownout/reboot soon."
+
     - name: homelab.cilium
       interval: 1m
       rules:
