@@ -192,6 +192,8 @@ sudo tailscale up --advertise-routes=10.42.4.0/24 --accept-routes
 sudo tailscale up --advertise-routes=10.42.3.0/24 --accept-routes
 ```
 
+> **Warning:** `tailscale up --advertise-routes=X` **replaces** the whole route list, it does not append. If you later advertise an additional subnet on one of these nodes (e.g. the LAN subnet for external access — see `EXTERNAL-ACCESS.md`), you must pass the full comma-separated list including the pod CIDR, e.g. `--advertise-routes=10.42.1.0/24,192.168.1.0/24`. Passing only the new subnet silently wipes the pod-CIDR advertisement — see the incident below.
+
 ### Step 3 — Approve routes in Tailscale admin
 
 Go to admin.tailscale.com → each machine → Edit route settings → approve the subnet route.
@@ -239,6 +241,42 @@ kubectl run nettest --image=busybox --rm -it --restart=Never -- nc -zv <OCI_TS_I
 
 # External connectivity
 kubectl run nettest --image=busybox --rm -it --restart=Never -- wget -qO- http://1.1.1.1 --timeout=5
+```
+
+---
+
+### One node's pods can't reach the API server / other nodes, but node itself can
+
+**Symptom:** every pod scheduled on one specific node times out reaching `10.43.0.1:443` (or any other ClusterIP whose backend lives on another node) — `dial tcp ...: i/o timeout`. Other nodes are fine. Cilium status/endpoints/ipcache on the affected node all look healthy. `ssh`-ing into the node and testing connectivity directly (host-level) works fine — only pod-sourced traffic fails.
+
+**Cause:** Tailscale enforces that a peer may only source traffic from IPs it has actually advertised (`AllowedIPs`). If that node's `--advertise-routes` was re-run with a different/incomplete list (see warning under Step 2 above), its pod-CIDR advertisement gets silently dropped. The affected node keeps routing pod traffic out its own `tailscale0` fine (visible with `tcpdump` locally), but the **receiving** peer's tailscaled refuses to accept/deliver a packet sourced from a subnet that node isn't authorized for — no RST, no ICMP, just a connection timeout indistinguishable from a generic network problem.
+
+**Diagnose:** from the node that has the pod CIDR you suspect (e.g. master, or any healthy node), check what routes Tailscale actually trusts for the broken peer:
+
+```bash
+tailscale status --json | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for k,p in d.get('Peer',{}).items():
+    print(p.get('HostName'), 'AllowedIPs:', p.get('AllowedIPs'))
+"
+```
+
+The broken node's `AllowedIPs` will be missing its `10.42.X.0/24` pod CIDR (compare against a healthy node in the same list — see [Node pod CIDRs](#node-pod-cidrs) table above).
+
+**Fix:** re-advertise the correct full route list on that node (2026-07-20 incident — `raspberrypi4-5` had lost `10.42.3.0/24`, was only advertising `192.168.1.0/24`):
+
+```bash
+ssh <affected-node>
+sudo tailscale up --advertise-routes=10.42.X.0/24 --accept-routes=false
+```
+
+No manual approval needed if auto-approvers are already configured for `10.42.0.0/16` — verify the fix immediately:
+
+```bash
+kubectl run nettest --image=busybox:1.36 --rm -it --restart=Never \
+  --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"<affected-node>"}}}' \
+  -- nc -zv <OCI_TS_IP> 6443
 ```
 
 ---
