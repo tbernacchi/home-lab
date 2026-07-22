@@ -19,7 +19,7 @@ prometheus:
             requests:
               storage: 2Gi
     nodeSelector:
-      kubernetes.io/hostname: raspberrypi4-1
+      kubernetes.io/hostname: instance-20260606-1317
     readinessProbe:
       failureThreshold: 5
       periodSeconds: 15
