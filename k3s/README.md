@@ -92,6 +92,58 @@ sudo systemctl daemon-reload && sudo systemctl restart k3s
 
 After restart, klipper `svclb-*` pods terminate and stop assigning node IPs to LoadBalancer services.
 
+## Node stuck NotReady — missing default route
+
+**Symptom:** `kubectl get nodes` shows a worker `NotReady`. LAN ping to the
+node works fine (same subnet, no default route needed). Tailscale shows the
+node `offline, last seen Xd ago`. SSH to the node still works (LAN).
+
+**Diagnose (on the node):**
+```bash
+ip route show default   # empty output = the bug
+tailscale status         # "Unable to connect to the Tailscale coordination
+                          # server" in the health check = confirms it
+```
+
+**Cause:** the kernel's default route (`0.0.0.0/0`) is gone even though
+`netplan`'s config still declares it correctly. Without a default route,
+Tailscale can't reach its coordination server (needs real internet, not
+just the LAN), so the mesh goes stale and the node drops out of both
+Tailscale and — once k3s-agent's connection to the API server times out —
+Kubernetes.
+
+**Fix:**
+```bash
+sudo netplan apply
+ip route show default   # should now show the gateway
+```
+
+**If the node still won't go Ready after the route is restored:** check
+deeper — a route outage lasting hours can leave `k3s-agent` or its embedded
+`containerd` in a stuck/half-restarted state that a plain
+`systemctl restart k3s-agent` won't clear:
+```bash
+# containerd's own gRPC socket refusing connections is the tell:
+sudo crictl --runtime-endpoint unix:///run/k3s/containerd/containerd.sock ps
+# "connection refused" here (while containerd-shim processes are still
+# running individually) means the containerd daemon itself died, only its
+# per-container shims survived
+```
+At that point, a full `sudo reboot` of the node is faster and more reliable
+than continuing to chase each layer (route → Tailscale → k3s-agent →
+containerd → Cilium eBPF) individually — 2026-07-24 incident took a plain
+route fix, then a `k3s-agent` restart (didn't fully recover), before a
+reboot cleared everything at once.
+
+**Known cosmetic issue, not the cause of the above:** some workers show
+*two* default routes after boot (`ip route show default`) — one `proto
+static` (from netplan, correct source IP) and one `proto dhcp` with a
+*different* source IP, e.g. `.110` instead of the node's real `.102`. Not
+yet root-caused (possibly a stray DHCP client alongside the static
+netplan config) — survives reboot, hasn't caused an observed problem
+since Tailscale-bound traffic uses `tailscale0` not the default route, but
+worth cleaning up if it ever causes asymmetric routing on the LAN side.
+
 ## Useful commands
 
 ```bash
